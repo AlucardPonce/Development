@@ -2,7 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const admin = require('firebase-admin');
 const fs = require('fs');
-const validator = require('validator'); // Importamos validator
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const cors = require("cors"); // Importar cors
 
 const app = express();
 const port = 3000;
@@ -24,32 +26,23 @@ admin.firestore().collection('users').limit(1).get()
 
 const db = admin.firestore();
 
+// Middleware CORS
+app.use(cors());  // Permitir todas las solicitudes de origen cruzado
+
 app.use(express.json());
+
+// Función para generar el JWT
+const generateToken = (userId) => {
+    return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '10m' });
+};
 
 // Endpoint para registrar usuario
 app.post('/register', async (req, res) => {
-    const { username, password, gmail, last_login, rol } = req.body;
+    const { username, password, gmail, rol } = req.body;
+    const last_login = new Date().toISOString(); // Fecha actual en formato ISO
 
-    const errors = [];
-
-    // Validación de campos vacíos
-    if (!username || !password || !gmail || !last_login || !rol) {
-        errors.push('Todos los campos son obligatorios');
-    }
-
-    // Validación del formato del email
-    if (gmail && !validator.isEmail(gmail)) {
-        errors.push('El formato de email no es válido');
-    }
-
-    // Validación de la longitud de la contraseña
-    if (password && password.length < 6) {
-        errors.push('La contraseña debe tener al menos 6 caracteres');
-    }
-
-    // Si hay errores, devolverlos
-    if (errors.length > 0) {
-        return res.status(400).json({ statusCode: 400, intMessage: 'Errores de validación', errors });
+    if (!username || !password || !gmail || !rol) {
+        return res.status(400).json({ statusCode: 400, intMessage: 'Todos los campos son obligatorios' });
     }
 
     try {
@@ -62,8 +55,17 @@ app.post('/register', async (req, res) => {
             return res.status(409).json({ statusCode: 409, intMessage: 'El username o gmail ya están en uso' });
         }
 
+        // Encriptar la contraseña antes de guardarla
+        const hashedPassword = await bcrypt.hash(password, 10);
+
         // Guardar usuario en Firestore
-        await usersRef.add({ username, password, gmail, last_login, rol });
+        await usersRef.add({
+            username,
+            password: hashedPassword,
+            gmail,
+            last_login,
+            rol
+        });
 
         return res.status(201).json({ statusCode: 201, intMessage: 'Usuario registrado con éxito', data: { username, gmail } });
 
@@ -73,27 +75,17 @@ app.post('/register', async (req, res) => {
     }
 });
 
-// Endpoint para validar usuario
+// Endpoint para validar usuario y generar token
 app.post('/validate', async (req, res) => {
     const { username, password } = req.body;
 
-    const errors = [];
-
-    // Validación de campos vacíos
     if (!username || !password) {
-        errors.push('Se requieren username y password');
-    }
-
-    if (errors.length > 0) {
-        return res.status(400).json({ statusCode: 400, intMessage: 'Errores de validación', errors });
+        return res.status(400).json({ statusCode: 400, intMessage: 'Se requieren username y password' });
     }
 
     try {
         const usersRef = db.collection('USERS');
-        const querySnapshot = await usersRef
-            .where('username', '==', username)
-            .where('password', '==', password)
-            .get();
+        const querySnapshot = await usersRef.where('username', '==', username).get();
 
         if (querySnapshot.empty) {
             return res.status(401).json({ statusCode: 401, intMessage: 'Credenciales incorrectas' });
@@ -101,15 +93,29 @@ app.post('/validate', async (req, res) => {
 
         const user = querySnapshot.docs[0].data();
 
+        // Verificar la contraseña con la que se encuentra en la base de datos
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+
+        if (!isPasswordValid) {
+            return res.status(401).json({ statusCode: 401, intMessage: 'Credenciales incorrectas' });
+        }
+
+        // Generar un token JWT
+        const token = generateToken(user.username);
+
         return res.status(200).json({
             statusCode: 200,
             intMessage: 'Operación exitosa',
-            data: { message: 'Autenticación exitosa', user: { username: user.username, gmail: user.gmail } }
+            data: {
+                message: 'Autenticación exitosa',
+                user: { username: user.username, gmail: user.gmail },
+                token
+            }
         });
 
     } catch (err) {
-        console.error('Error validando usuario:', err);
-        return res.status(500).json({ statusCode: 500, intMessage: 'Internal Server Error' });
+        console.error('Error al validar usuario:', err); // Log detallado del error
+        return res.status(500).json({ statusCode: 500, intMessage: 'Error interno del servidor', error: err.message });
     }
 });
 

@@ -1,6 +1,7 @@
 import { Form, Input, Button, Card, Typography, message } from "antd";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const { Title } = Typography;
 
@@ -9,20 +10,33 @@ const LoginPage = () => {
   const [formError, setFormError] = useState(""); 
   const navigate = useNavigate();
 
-  const onFinish = (values) => {
+  const onFinish = async (values) => {
     setLoading(true);
     setFormError(""); 
 
-    setTimeout(() => {
+    try {
+      const response = await axios.post("http://localhost:3000/validate", 
+        values,  // Aquí envías directamente el objeto de formulario
+        {
+          headers: {
+            "Content-Type": "application/json",  // Especificamos el tipo de contenido
+          }
+        }
+      );
 
-      if (values.username === "admin" && values.password === "123456") {
+      if (response.data.statusCode === 200) {
         message.success("Inicio de sesión exitoso");
-        navigate("/dashboard");
+        localStorage.setItem("token", response.data.data.token); // Almacenar el token recibido en el localStorage
+        navigate("/dashboard"); // Redirigir al dashboard
       } else {
         setFormError("Credenciales incorrectas");
       }
+    } catch (error) {
+      setFormError("Error en la autenticación");
+      console.error(error);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   useEffect(() => {
