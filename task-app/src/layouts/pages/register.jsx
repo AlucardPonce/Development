@@ -13,8 +13,9 @@ const RegisterPage = () => {
     setLoading(true);
     setFormError(""); 
 
-    const { username, password, gmail, rol } = values;
-    const last_login = new Date().toISOString(); // Fecha actual en formato ISO
+    const { username, password, gmail} = values;
+    const last_login = new Date().toISOString();
+    const rol = "usuario";
 
     const payload = {
       username,
@@ -86,14 +87,6 @@ const RegisterPage = () => {
             ]}
           >
             <Input placeholder="Correo electrónico" />
-          </Form.Item>
-
-          <Form.Item
-            label="Rol"
-            name="rol"
-            rules={[{ required: true, message: "Por favor, seleccione su rol" }]}
-          >
-            <Input placeholder="Rol" />
           </Form.Item>
 
           {formError && (
