@@ -6,7 +6,7 @@ const fs = require('fs');
 const app = express();
 const port = 3000;
 
-const serviceAccount = JSON.parse(fs.readFileSync('ruta/a/tu/clave.json', 'utf8'));
+const serviceAccount = JSON.parse(fs.readFileSync('./credenciales/task-manager-79c82-firebase-adminsdk-fbsvc-3771274df0.json', 'utf8'));
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
