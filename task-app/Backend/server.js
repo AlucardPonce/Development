@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const admin = require('firebase-admin');
 const fs = require('fs');
+const validator = require('validator'); // Importamos validator
 
 const app = express();
 const port = 3000;
@@ -29,8 +30,26 @@ app.use(express.json());
 app.post('/register', async (req, res) => {
     const { username, password, gmail, last_login, rol } = req.body;
 
+    const errors = [];
+
+    // Validación de campos vacíos
     if (!username || !password || !gmail || !last_login || !rol) {
-        return res.status(400).json({ statusCode: 400, intMessage: 'Todos los campos son obligatorios' });
+        errors.push('Todos los campos son obligatorios');
+    }
+
+    // Validación del formato del email
+    if (gmail && !validator.isEmail(gmail)) {
+        errors.push('El formato de email no es válido');
+    }
+
+    // Validación de la longitud de la contraseña
+    if (password && password.length < 6) {
+        errors.push('La contraseña debe tener al menos 6 caracteres');
+    }
+
+    // Si hay errores, devolverlos
+    if (errors.length > 0) {
+        return res.status(400).json({ statusCode: 400, intMessage: 'Errores de validación', errors });
     }
 
     try {
@@ -58,8 +77,15 @@ app.post('/register', async (req, res) => {
 app.post('/validate', async (req, res) => {
     const { username, password } = req.body;
 
+    const errors = [];
+
+    // Validación de campos vacíos
     if (!username || !password) {
-        return res.status(400).json({ statusCode: 400, intMessage: 'Se requieren username y password' });
+        errors.push('Se requieren username y password');
+    }
+
+    if (errors.length > 0) {
+        return res.status(400).json({ statusCode: 400, intMessage: 'Errores de validación', errors });
     }
 
     try {

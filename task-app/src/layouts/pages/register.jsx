@@ -14,13 +14,13 @@ const RegisterPage = () => {
     setFormError(""); 
 
     const { username, password, gmail, rol } = values;
-    const last_login = new Date().toISOString(); // Obtener la fecha y hora actual
+    const last_login = new Date().toISOString(); // Fecha actual en formato ISO
 
     const payload = {
       username,
       password,
       gmail,
-      last_login,
+      last_login, // Se incluye la fecha actual aquí
       rol,
     };
 
@@ -59,8 +59,7 @@ const RegisterPage = () => {
             label="Usuario"
             name="username"
             rules={[{ required: true, message: "Por favor, ingrese su usuario" }]}
-            validateStatus={formError ? "error" : ""}
-            help={formError && formError}
+
           >
             <Input placeholder="Usuario" />
           </Form.Item>
@@ -70,10 +69,10 @@ const RegisterPage = () => {
             name="password"
             rules={[
               { required: true, message: "Ingrese su contraseña" },
-              { min: 6, message: "Debe tener al menos 6 caracteres" },
+              { min: 8, message: "Debe tener al menos 8 caracteres" },
+              { pattern: /[A-Z]/, message: "La contraseña debe contener al menos una letra mayúscula" },
+              { pattern: /\d/, message: "La contraseña debe contener al menos un número" },
             ]}
-            validateStatus={formError ? "error" : ""}
-            help={formError && formError}
           >
             <Input.Password placeholder="Contraseña" />
           </Form.Item>
@@ -81,9 +80,10 @@ const RegisterPage = () => {
           <Form.Item
             label="Correo Electrónico"
             name="gmail"
-            rules={[{ required: true, message: "Por favor, ingrese su correo electrónico" }]}
-            validateStatus={formError ? "error" : ""}
-            help={formError && formError}
+            rules={[
+              { required: true, message: "Por favor, ingrese su correo electrónico" },
+              { type: "email", message: "El correo electrónico no es válido" },
+            ]}
           >
             <Input placeholder="Correo electrónico" />
           </Form.Item>
@@ -92,11 +92,13 @@ const RegisterPage = () => {
             label="Rol"
             name="rol"
             rules={[{ required: true, message: "Por favor, seleccione su rol" }]}
-            validateStatus={formError ? "error" : ""}
-            help={formError && formError}
           >
             <Input placeholder="Rol" />
           </Form.Item>
+
+          {formError && (
+            <p style={styles.errorMessage}>{formError}</p>
+          )}
 
           <Form.Item>
             <Button
