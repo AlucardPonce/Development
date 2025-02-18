@@ -74,6 +74,7 @@ const LoginPage = () => {
             </Button>
           </Form.Item>
         </Form>
+        <p>Aún no cuentas con cuenta? <a href="/register">Registrar aquí</a></p>
       </Card>
     </div>
   );

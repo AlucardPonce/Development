@@ -12,32 +12,41 @@ admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
 });
 
+// Verificar la conexión a Firebase
+admin.firestore().collection('users').limit(1).get()
+    .then(() => {
+        console.log('Conexión a Firebase establecida correctamente');
+    })
+    .catch((err) => {
+        console.error('Error al conectar con Firebase:', err);
+    });
+
 const db = admin.firestore();
 
 app.use(express.json());
 
 // Endpoint para registrar usuario
 app.post('/register', async (req, res) => {
-    const { username, password, email, birthDate, fullName } = req.body;
+    const { username, password, gmail, last_login, rol } = req.body;
 
-    if (!username || !password || !email || !birthDate || !fullName) {
+    if (!username || !password || !gmail || !last_login || !rol) {
         return res.status(400).json({ statusCode: 400, intMessage: 'Todos los campos son obligatorios' });
     }
 
     try {
         // Verificar si el usuario ya existe
-        const usersRef = db.collection('usuarios');
+        const usersRef = db.collection('USERS');
         const existingUser = await usersRef.where('username', '==', username).get();
-        const existingEmail = await usersRef.where('email', '==', email).get();
+        const existingGmail = await usersRef.where('gmail', '==', gmail).get();
 
-        if (!existingUser.empty || !existingEmail.empty) {
-            return res.status(409).json({ statusCode: 409, intMessage: 'El username o email ya están en uso' });
+        if (!existingUser.empty || !existingGmail.empty) {
+            return res.status(409).json({ statusCode: 409, intMessage: 'El username o gmail ya están en uso' });
         }
 
         // Guardar usuario en Firestore
-        await usersRef.add({ username, password, email, birthDate, fullName });
+        await usersRef.add({ username, password, gmail, last_login, rol });
 
-        return res.status(201).json({ statusCode: 201, intMessage: 'Usuario registrado con éxito', data: { username, email } });
+        return res.status(201).json({ statusCode: 201, intMessage: 'Usuario registrado con éxito', data: { username, gmail } });
 
     } catch (err) {
         console.error('Error registrando usuario:', err);
@@ -54,7 +63,7 @@ app.get('/validate', async (req, res) => {
     }
 
     try {
-        const usersRef = db.collection('usuarios');
+        const usersRef = db.collection('USERS');
         const querySnapshot = await usersRef
             .where('username', '==', username)
             .where('password', '==', password)
@@ -69,7 +78,7 @@ app.get('/validate', async (req, res) => {
         return res.status(200).json({
             statusCode: 200,
             intMessage: 'Operación exitosa',
-            data: { message: 'Autenticación exitosa', user: { username: user.username, email: user.email } }
+            data: { message: 'Autenticación exitosa', user: { username: user.username, gmail: user.gmail } }
         });
 
     } catch (err) {
