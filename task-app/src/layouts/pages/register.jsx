@@ -1,102 +1,156 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import { Form, Input, Button, Card, Typography, message } from "antd";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-const Registro = () => {
-    const [formData, setFormData] = useState({
-        username: '',
-        password: '',
-        gmail: '',
-        last_login: '',
-        rol: ''
-    });
+const { Title } = Typography;
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({
-            ...formData,
-            [name]: value
-        });
+const RegisterPage = () => {
+  const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState(""); 
+  const navigate = useNavigate();
+
+  const onFinish = async (values) => {
+    setLoading(true);
+    setFormError(""); 
+
+    const { username, password, gmail, rol } = values;
+    const last_login = new Date().toISOString(); // Obtener la fecha y hora actual
+
+    const payload = {
+      username,
+      password,
+      gmail,
+      last_login,
+      rol,
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            // Realiza la solicitud POST al backend
-            const response = await axios.post('http://localhost:3000/register', formData);
-            console.log(response.data);
-            alert('Usuario registrado con éxito');
-        } catch (error) {
-            console.error('Error registrando el usuario:', error);
-            alert('Hubo un error al registrar al usuario');
-        }
-    };
+    try {
+      const response = await fetch("/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-    return (
-        <div className="registro-container">
-            <h2>Formulario de Registro</h2>
-            <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                    <label htmlFor="username">Username</label>
-                    <input
-                        type="text"
-                        id="username"
-                        name="username"
-                        value={formData.username}
-                        onChange={handleChange}
-                        required
-                    />
-                </div>
-                <div className="form-group">
-                    <label htmlFor="password">Password</label>
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        required
-                    />
-                </div>
-                <div className="form-group">
-                    <label htmlFor="gmail">Gmail</label>
-                    <input
-                        type="email"
-                        id="gmail"
-                        name="gmail"
-                        value={formData.gmail}
-                        onChange={handleChange}
-                        required
-                    />
-                </div>
-                <div className="form-group">
-                    <label htmlFor="last_login">Last Login</label>
-                    <input
-                        type="date"
-                        id="last_login"
-                        name="last_login"
-                        value={formData.last_login}
-                        onChange={handleChange}
-                        required
-                    />
-                </div>
-                <div className="form-group">
-                    <label htmlFor="rol">Rol</label>
-                    <select
-                        id="rol"
-                        name="rol"
-                        value={formData.rol}
-                        onChange={handleChange}
-                        required
-                    >
-                        <option value="">Seleccione un rol</option>
-                        <option value="admin">Admin</option>
-                        <option value="user">Usuario</option>
-                    </select>
-                </div>
-                <button type="submit">Registrar</button>
-            </form>
-        </div>
-    );
+      if (!response.ok) {
+        throw new Error("Error al registrar el usuario");
+      }
+
+      const result = await response.json();
+      message.success("Registro exitoso");
+      navigate("/login"); // Redirigir al login después de un registro exitoso
+    } catch (error) {
+      setFormError(error.message || "Ocurrió un error al registrar");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={styles.container}>
+      <Card style={styles.card} bordered={false}>
+        <Title level={2} style={{ textAlign: "center", color: "#333" }}>
+          Crear Cuenta
+        </Title>
+        
+        <Form layout="vertical" onFinish={onFinish}>
+          <Form.Item
+            label="Usuario"
+            name="username"
+            rules={[{ required: true, message: "Por favor, ingrese su usuario" }]}
+            validateStatus={formError ? "error" : ""}
+            help={formError && formError}
+          >
+            <Input placeholder="Usuario" />
+          </Form.Item>
+
+          <Form.Item
+            label="Contraseña"
+            name="password"
+            rules={[
+              { required: true, message: "Ingrese su contraseña" },
+              { min: 6, message: "Debe tener al menos 6 caracteres" },
+            ]}
+            validateStatus={formError ? "error" : ""}
+            help={formError && formError}
+          >
+            <Input.Password placeholder="Contraseña" />
+          </Form.Item>
+
+          <Form.Item
+            label="Correo Electrónico"
+            name="gmail"
+            rules={[{ required: true, message: "Por favor, ingrese su correo electrónico" }]}
+            validateStatus={formError ? "error" : ""}
+            help={formError && formError}
+          >
+            <Input placeholder="Correo electrónico" />
+          </Form.Item>
+
+          <Form.Item
+            label="Rol"
+            name="rol"
+            rules={[{ required: true, message: "Por favor, seleccione su rol" }]}
+            validateStatus={formError ? "error" : ""}
+            help={formError && formError}
+          >
+            <Input placeholder="Rol" />
+          </Form.Item>
+
+          <Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              block
+              loading={loading}
+              style={styles.button}
+            >
+              Registrar
+            </Button>
+          </Form.Item>
+        </Form>
+        <p>
+          ¿Ya tienes cuenta? 
+          <Button 
+            type="link" 
+            onClick={() => navigate("/login")}
+            style={{ padding: 0, fontSize: "14px" }}
+          >
+            Iniciar sesión
+          </Button>
+        </p>
+      </Card>
+    </div>
+  );
 };
 
-export default Registro;
+const styles = {
+  container: {
+    height: "100vh", 
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "linear-gradient(135deg, #667eea, #764ba2)", 
+  },
+  card: {
+    width: 380,
+    padding: 20,
+    borderRadius: 10,
+    boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.3)",
+    background: "#fff",
+  },
+  button: {
+    backgroundColor: "#1890ff",
+    borderColor: "#1890ff",
+    fontSize: "16px",
+  },
+  errorMessage: {
+    color: "#f5222d",
+    marginBottom: "10px",
+    fontSize: "14px",
+    textAlign: "center",
+  },
+};
+
+export default RegisterPage;

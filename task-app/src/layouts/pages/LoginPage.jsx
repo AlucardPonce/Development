@@ -74,7 +74,18 @@ const LoginPage = () => {
             </Button>
           </Form.Item>
         </Form>
-        <p>Aún no cuentas con cuenta? <a href="/register">Registrar aquí</a></p>
+        <div style={styles.center}>
+          <p>
+            ¿Aún no tienes cuenta? 
+            <Button 
+              type="link" 
+              onClick={() => navigate("/register")}
+              style={{ padding: 0, fontSize: "14px" }}
+            >
+              Registrar aquí
+            </Button>
+          </p>
+        </div>
       </Card>
     </div>
   );
@@ -105,6 +116,10 @@ const styles = {
     marginBottom: "10px",
     fontSize: "14px",
     textAlign: "center",
+  },
+  center: {
+    textAlign: "center", 
+    marginTop: "10px",
   },
 };
 

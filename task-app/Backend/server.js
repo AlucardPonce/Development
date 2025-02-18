@@ -55,8 +55,8 @@ app.post('/register', async (req, res) => {
 });
 
 // Endpoint para validar usuario
-app.get('/validate', async (req, res) => {
-    const { username, password } = req.headers;
+app.post('/validate', async (req, res) => {
+    const { username, password } = req.body;
 
     if (!username || !password) {
         return res.status(400).json({ statusCode: 400, intMessage: 'Se requieren username y password' });
