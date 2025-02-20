@@ -15,7 +15,7 @@ admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
 });
 
-// Verificar la conexión a Firebase
+
 admin.firestore().collection('users').limit(1).get()
     .then(() => {
         console.log('Conexión a Firebase establecida correctamente');
@@ -33,22 +33,20 @@ const generateToken = (userId) => {
     return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '10m' });
 };
 
-// Middleware para verificar el token JWT
 const verifyToken = (req, res, next) => {
-    const token = req.headers['authorization']?.split(' ')[1]; // Obtener el token del encabezado Authorization
+    const token = req.headers['authorization']?.split(' ')[1];
     if (!token) {
         return res.status(403).json({ statusCode: 403, message: 'Token no proporcionado' });
     }
     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
         if (err) {
-            console.error('Error al verificar el token:', err); // Mensaje de depuración
+            console.error('Error al verificar el token:', err); 
             return res.status(401).json({ statusCode: 401, message: 'Token no válido' });
         }
-        req.username = decoded.userId || decoded.username; // Almacenar el username decodificado en la solicitud
+        req.username = decoded.userId || decoded.username;
         next();
-    }); // Asegúrate de que este paréntesis de cierre esté correcto
-}; // Cierre de la función verifyToken
-// Este paréntesis de cierre también debe estar correcto
+    }); 
+}; 
 
 
 app.post('/register', async (req, res) => {
@@ -107,7 +105,6 @@ app.post('/validate', async (req, res) => {
             return res.status(401).json({ statusCode: 401, intMessage: 'Credenciales incorrectas' });
         }
 
-        // Generar un token JWT
         const token = generateToken(user.username);
 
         return res.status(200).json({
@@ -145,8 +142,8 @@ app.post('/tasks', verifyToken, async (req, res) => {
             time_until_finish, 
             remind_me, 
             timestamp,
-            username: req.username // Usar el username de la solicitud
-        }; // Asegúrate de que haya un punto y coma aquí
+            username: req.username 
+        }; 
 
         const docRef = await db.collection('task').add(newTask);
         res.status(201).json({ statusCode: 201, message: 'Tarea creada con éxito', taskId: docRef.id });
@@ -157,15 +154,64 @@ app.post('/tasks', verifyToken, async (req, res) => {
 
 app.get('/tasks', verifyToken, async (req, res) => {
     try {
-        const username = req.username; // Obtener el username del token
+        const username = req.username; 
 
-        const tasksSnapshot = await db.collection('task').where('username', '==', username).get(); // Filtrar tareas por username
+        const tasksSnapshot = await db.collection('task').where('username', '==', username).get();
         const tasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         res.status(200).json({ statusCode: 200, tasks });
     } catch (err) {
         res.status(500).json({ statusCode: 500, message: 'Error al obtener tareas', error: err.message });
     }
 });
+
+app.get('/all-tasks', async (req, res) => {
+    try {
+        const tasksSnapshot = await db.collection('task').get();
+        const tasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.status(200).json({ statusCode: 200, tasks });
+    } catch (err) {
+        res.status(500).json({ statusCode: 500, message: 'Error al obtener todas las tareas', error: err.message });
+    }
+});
+
+app.put("/tasks/edit", async (req, res) => {
+    const { id, name_task, description, status } = req.body;
+  
+    if (!id) {
+      return res.status(400).json({ message: "Se requiere el ID de la tarea" });
+    }
+  
+    try {
+      await db.collection("tasks").doc(id).update({
+        name_task,
+        description,
+        status,
+      });
+  
+      res.json({ message: "Tarea actualizada correctamente" });
+    } catch (error) {
+      console.error("Error al actualizar tarea:", error);
+      res.status(500).json({ message: "Error al actualizar tarea" });
+    }
+  });
+
+  app.delete("/tasks/delete", async (req, res) => {
+    const { id } = req.body;
+  
+    if (!id) {
+      return res.status(400).json({ message: "Se requiere el ID de la tarea" });
+    }
+  
+    try {
+      await db.collection("tasks").doc(id).delete();
+      res.json({ message: "Tarea eliminada correctamente" });
+    } catch (error) {
+      console.error("Error al eliminar tarea:", error);
+      res.status(500).json({ message: "Error al eliminar tarea" });
+    }
+  });
+  
+  
 
 
 app.listen(port, () => {
