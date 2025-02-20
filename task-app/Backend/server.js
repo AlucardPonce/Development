@@ -4,8 +4,7 @@ const admin = require('firebase-admin');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const cors = require("cors"); // Importar cors
-
+const cors = require("cors"); 
 const app = express();
 const port = 3000;
 
@@ -26,27 +25,27 @@ admin.firestore().collection('users').limit(1).get()
 
 const db = admin.firestore();
 
-// Middleware CORS
-app.use(cors());  // Permitir todas las solicitudes de origen cruzado
+
+app.use(cors()); 
 
 app.use(express.json());
 
-// Función para generar el JWT
+
 const generateToken = (userId) => {
     return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '10m' });
 };
 
-// Endpoint para registrar usuario
+
 app.post('/register', async (req, res) => {
     const { username, password, gmail, rol } = req.body;
-    const last_login = new Date().toISOString(); // Fecha actual en formato ISO
+    const last_login = new Date().toISOString(); 
 
     if (!username || !password || !gmail || !rol) {
         return res.status(400).json({ statusCode: 400, intMessage: 'Todos los campos son obligatorios' });
     }
 
     try {
-        // Verificar si el usuario ya existe
+    
         const usersRef = db.collection('USERS');
         const existingUser = await usersRef.where('username', '==', username).get();
         const existingGmail = await usersRef.where('gmail', '==', gmail).get();
@@ -55,10 +54,10 @@ app.post('/register', async (req, res) => {
             return res.status(409).json({ statusCode: 409, intMessage: 'El username o gmail ya están en uso' });
         }
 
-        // Encriptar la contraseña antes de guardarla
+  
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Guardar usuario en Firestore
+  
         await usersRef.add({
             username,
             password: hashedPassword,
@@ -75,7 +74,7 @@ app.post('/register', async (req, res) => {
     }
 });
 
-// Endpoint para validar usuario y generar token
+
 app.post('/validate', async (req, res) => {
     const { username, password } = req.body;
 
@@ -93,7 +92,7 @@ app.post('/validate', async (req, res) => {
 
         const user = querySnapshot.docs[0].data();
 
-        // Verificar la contraseña con la que se encuentra en la base de datos
+
         const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!isPasswordValid) {
@@ -114,12 +113,12 @@ app.post('/validate', async (req, res) => {
         });
 
     } catch (err) {
-        console.error('Error al validar usuario:', err); // Log detallado del error
+        console.error('Error al validar usuario:', err);
         return res.status(500).json({ statusCode: 500, intMessage: 'Error interno del servidor', error: err.message });
     }
 });
 
-// Servidor en escucha
+
 app.listen(port, () => {
     console.log(`Servidor corriendo en http://localhost:${port}`);
 });

@@ -21,7 +21,7 @@ const RegisterPage = () => {
       username,
       password,
       gmail,
-      last_login, // Se incluye la fecha actual aquí
+      last_login,
       rol,
     };
 
@@ -40,7 +40,7 @@ const RegisterPage = () => {
 
       const result = await response.json();
       message.success("Registro exitoso");
-      navigate("/login"); // Redirigir al login después de un registro exitoso
+      navigate("/login");
     } catch (error) {
       setFormError(error.message || "Ocurrió un error al registrar");
     } finally {
