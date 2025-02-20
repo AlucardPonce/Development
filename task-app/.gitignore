@@ -5,6 +5,10 @@
 /.pnp
 .pnp.js
 
+#keys
+
+task-manager-79c82-firebase-adminsdk-fbsvc-3771274df0.json
+
 # testing
 /coverage
 
