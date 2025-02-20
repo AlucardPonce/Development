@@ -1,10 +1,12 @@
 import { Form, Input, Button, Card, Typography, message } from "antd";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const { Title } = Typography;
 
 const RegisterPage = () => {
+  const [form] = Form.useForm(); // Crear una referencia al formulario
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState(""); 
   const navigate = useNavigate();
@@ -13,7 +15,7 @@ const RegisterPage = () => {
     setLoading(true);
     setFormError(""); 
 
-    const { username, password, gmail} = values;
+    const { username, password, gmail } = values;
     const last_login = new Date().toISOString();
     const rol = "usuario";
 
@@ -26,23 +28,15 @@ const RegisterPage = () => {
     };
 
     try {
-      const response = await fetch("/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+      const response = await axios.post("/register", payload, {
+        headers: { "Content-Type": "application/json" },
       });
 
-      if (!response.ok) {
-        throw new Error("Error al registrar el usuario");
-      }
-
-      const result = await response.json();
       message.success("Registro exitoso");
+      form.resetFields(); // Reiniciar los campos del formulario
       navigate("/login");
     } catch (error) {
-      setFormError(error.message || "Ocurrió un error al registrar");
+      setFormError(error.response?.data?.intMessage || "Ocurrió un error al registrar");
     } finally {
       setLoading(false);
     }
@@ -55,12 +49,11 @@ const RegisterPage = () => {
           Crear Cuenta
         </Title>
         
-        <Form layout="vertical" onFinish={onFinish}>
+        <Form form={form} layout="vertical" onFinish={onFinish}>
           <Form.Item
             label="Usuario"
             name="username"
             rules={[{ required: true, message: "Por favor, ingrese su usuario" }]}
-
           >
             <Input placeholder="Usuario" />
           </Form.Item>
