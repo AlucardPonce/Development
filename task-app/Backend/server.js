@@ -9,7 +9,7 @@ const app = express();
 const port = 3000;
 const bodyParser = require('body-parser');
 
-const serviceAccount = JSON.parse(fs.readFileSync('./credenciales/task-manager-79c82-firebase-adminsdk-fbsvc-3771274df0.json', 'utf8'));
+const serviceAccount = JSON.parse(fs.readFileSync('./credenciales/firebase-key.json', 'utf8'));
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
@@ -124,7 +124,6 @@ app.post('/validate', async (req, res) => {
 });
 
 //$$$$$$$$$$$$$$$$$$$$$$$$$$$$$[      APIS TASK         ]$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
 app.post('/tasks', verifyToken, async (req, res) => {
     try {
         const { category, description, name_task, status, time_until_finish, remind_me } = req.body;
@@ -134,7 +133,9 @@ app.post('/tasks', verifyToken, async (req, res) => {
         }
 
         const timestamp = new Date().toISOString();
+        const taskRef = db.collection('task').doc(); // Genera un ID único
         const newTask = { 
+            id: taskRef.id, // Guardar el ID dentro del documento
             category, 
             description, 
             name_task, 
@@ -145,8 +146,8 @@ app.post('/tasks', verifyToken, async (req, res) => {
             username: req.username 
         }; 
 
-        const docRef = await db.collection('task').add(newTask);
-        res.status(201).json({ statusCode: 201, message: 'Tarea creada con éxito', taskId: docRef.id });
+        await taskRef.set(newTask);
+        res.status(201).json({ statusCode: 201, message: 'Tarea creada con éxito', taskId: taskRef.id });
     } catch (err) {
         res.status(500).json({ statusCode: 500, message: 'Error al crear la tarea', error: err.message });
     }
@@ -173,46 +174,6 @@ app.get('/all-tasks', async (req, res) => {
         res.status(500).json({ statusCode: 500, message: 'Error al obtener todas las tareas', error: err.message });
     }
 });
-
-app.put("/tasks/edit", async (req, res) => {
-    const { id, name_task, description, status } = req.body;
-  
-    if (!id) {
-      return res.status(400).json({ message: "Se requiere el ID de la tarea" });
-    }
-  
-    try {
-      await db.collection("tasks").doc(id).update({
-        name_task,
-        description,
-        status,
-      });
-  
-      res.json({ message: "Tarea actualizada correctamente" });
-    } catch (error) {
-      console.error("Error al actualizar tarea:", error);
-      res.status(500).json({ message: "Error al actualizar tarea" });
-    }
-  });
-
-  app.delete("/tasks/delete", async (req, res) => {
-    const { id } = req.body;
-  
-    if (!id) {
-      return res.status(400).json({ message: "Se requiere el ID de la tarea" });
-    }
-  
-    try {
-      await db.collection("tasks").doc(id).delete();
-      res.json({ message: "Tarea eliminada correctamente" });
-    } catch (error) {
-      console.error("Error al eliminar tarea:", error);
-      res.status(500).json({ message: "Error al eliminar tarea" });
-    }
-  });
-  
-  
-
 
 app.listen(port, () => {
     console.log(`Servidor corriendo en http://localhost:${port}`);
