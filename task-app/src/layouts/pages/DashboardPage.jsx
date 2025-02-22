@@ -1,23 +1,34 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Form, Input, DatePicker, Button, message, Select } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import MainLayout from "../../layouts/MainLayout";
 import axios from "axios";
 
-const TaskForm = ({ visible, onCreate, onCancel, username }) => {
+const TaskForm = ({ visible, onCreate, onCancel, taskData }) => {
   const [form] = Form.useForm();
 
+  useEffect(() => {
+    if (taskData) {
+      form.setFieldsValue(taskData);
+    } else {
+      form.resetFields();
+    }
+  }, [taskData, visible]);
+
   const onFinish = (values) => {
-    // Agregar el username a los valores antes de crear la tarea
-    onCreate({ ...values, username });
+    onCreate({
+      ...values,
+      time_until_finish: values.time_until_finish ? values.time_until_finish.toISOString() : null,
+      remind_me: values.remind_me ? values.remind_me.toISOString() : null,
+      id: taskData?.id,
+    });
     form.resetFields();
   };
-
   return (
     <Modal
-      visible={visible}
-      title="Crear Tarea"
-      okText="Crear"
+      open={visible}
+      title={taskData ? "Editar Tarea" : "Crear Tarea"}
+      okText={taskData ? "Actualizar" : "Crear"}
       onCancel={onCancel}
       onOk={form.submit}
     >
@@ -77,42 +88,75 @@ const TaskForm = ({ visible, onCreate, onCancel, username }) => {
 const DashboardPage = () => {
   const [visible, setVisible] = useState(false);
   const [tasks, setTasks] = useState([]);
-  const userToken = localStorage.getItem("token"); // Obtener el token del usuario
-  const username = localStorage.getItem("username"); // Obtener el username del usuario desde localStorage
-
-  const onCreate = async (values) => {
-    try {
-      const response = await axios.post("http://localhost:3000/tasks", values, {
-        headers: {
-          Authorization: `Bearer ${userToken}`, // Enviar el token para autenticar la solicitud
-        },
-      });
-      message.success(response.data.message); // Mostrar mensaje de éxito
-      setVisible(false);
-      fetchTasks(); // Refrescar la lista de tareas
-    } catch (error) {
-      console.error("Error al crear la tarea:", error);
-      message.error("Error al crear la tarea");
-    }
-  };
+  const [editingTask, setEditingTask] = useState(null);
+  const [userToken, setUserToken] = useState(localStorage.getItem("token"));
 
   const fetchTasks = async () => {
     try {
-      const response = await axios.get(`http://localhost:3000/tasks`, {
+      const response = await axios.get("http://localhost:3000/tasks", {
         headers: {
-          Authorization: `Bearer ${userToken}`, // Enviar el token para autenticar la solicitud
+          Authorization: `Bearer ${userToken}`,
         },
       });
-      setTasks(response.data.tasks); // Almacenar las tareas en el estado
+      setTasks(response.data.tasks);
     } catch (error) {
       console.error("Error al obtener tareas:", error);
       message.error("Error al obtener tareas");
     }
   };
 
+  const onCreateOrUpdate = async (values) => {
+    try {
+      const isEdit = Boolean(values.id);
+      const endpoint = isEdit
+        ? `http://localhost:3000/tasks/update/${values.id}`
+        : "http://localhost:3000/tasks";
+      const method = isEdit ? "put" : "post";
+
+      await axios({
+        method,
+        url: endpoint,
+        data: values,
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+
+      message.success(isEdit ? "Tarea actualizada con éxito" : "Tarea creada con éxito");
+      setVisible(false);
+      setEditingTask(null);
+      fetchTasks();
+    } catch (error) {
+      console.error("Error en la operación:", error);
+      message.error("Error al procesar la tarea");
+    }
+  };
+
+  const onEdit = (task) => {
+    setEditingTask(task);
+    setVisible(true);
+  };
+
+  const onDelete = async (id) => {
+    console.log("Eliminando tarea con ID:", id);
+    if (!id) {
+      message.error("ID de tarea no válido");
+      return;
+    }
+  
+    try {
+      await axios.delete(`http://localhost:3000/tasks/delete/${id}`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+  
+      message.success("Tarea eliminada con éxito");
+      fetchTasks();
+    } catch (error) {
+      console.error("Error al eliminar la tarea:", error);
+      message.error("Error al eliminar la tarea");
+    }
+  };
   useEffect(() => {
-    fetchTasks(); // Cargar las tareas al montar el componente
-  }, []);
+    if (userToken) fetchTasks();
+  }, [userToken]);
 
   return (
     <MainLayout>
@@ -122,15 +166,56 @@ const DashboardPage = () => {
           type="primary"
           shape="circle"
           icon={<PlusOutlined />}
-          onClick={() => setVisible(true)}
+          onClick={() => {
+            setEditingTask(null);
+            setVisible(true);
+          }}
           style={{ position: "fixed", bottom: 20, right: 20 }}
         />
-        <div style={{ marginTop: "40px", backgroundColor: "#fff", borderRadius: "8px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+        <div
+          style={{
+            marginTop: "40px",
+            backgroundColor: "#fff",
+            borderRadius: "8px",
+            padding: "20px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+          }}
+        >
           {tasks.length > 0 ? (
             tasks.map((task) => (
-              <div key={task.id} style={{ border: "1px solid #d9d9d9", borderRadius: "4px", padding: "15px", margin: "10px 0", backgroundColor: "#f9f9f9" }}>
-                <h4 style={{ margin: "0 0 10px" }}>{task.name_task}</h4>
-                <p style={{ margin: "5px 0" }}>Estado: <strong>{task.status}</strong></p>
+              <div
+                key={task.id}
+                style={{
+                  border: "1px solid #d9d9d9",
+                  borderRadius: "4px",
+                  padding: "15px",
+                  margin: "10px 0",
+                  backgroundColor: "#f9f9f9",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <div>
+                  <h4 style={{ margin: "0 0 10px" }}>{task.name_task}</h4>
+                  <p style={{ margin: "5px 0" }}>
+                    Estado: <strong>{task.status}</strong>
+                  </p>
+                </div>
+                <div>
+                  <Button
+                    icon={<EditOutlined />}
+                    onClick={() => onEdit(task)}
+                    aria-label="Editar tarea"
+                    style={{ marginRight: "8px" }}
+                  />
+                  <Button
+                    icon={<DeleteOutlined />}
+                    onClick={() => onDelete(task.id)}
+                    danger
+                    aria-label="Eliminar tarea"
+                  />
+                </div>
               </div>
             ))
           ) : (
@@ -139,9 +224,9 @@ const DashboardPage = () => {
         </div>
         <TaskForm
           visible={visible}
-          onCreate={onCreate}
+          onCreate={onCreateOrUpdate}
           onCancel={() => setVisible(false)}
-          username={username} // Pasar el username al componente de formulario
+          taskData={editingTask}
         />
       </div>
     </MainLayout>
