@@ -3,13 +3,18 @@ import { Modal, Form, Input, DatePicker, Button, message, Select } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import MainLayout from "../../layouts/MainLayout";
 import axios from "axios";
+import dayjs from "dayjs";
 
 const TaskForm = ({ visible, onCreate, onCancel, taskData }) => {
   const [form] = Form.useForm();
 
   useEffect(() => {
     if (taskData) {
-      form.setFieldsValue(taskData);
+      form.setFieldsValue({
+        ...taskData,
+        time_until_finish: taskData.time_until_finish ? dayjs(taskData.time_until_finish) : null,
+        remind_me: taskData.remind_me ? dayjs(taskData.remind_me) : null,
+      });
     } else {
       form.resetFields();
     }
@@ -24,6 +29,7 @@ const TaskForm = ({ visible, onCreate, onCancel, taskData }) => {
     });
     form.resetFields();
   };
+  
   return (
     <Modal
       open={visible}

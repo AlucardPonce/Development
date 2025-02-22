@@ -54,7 +54,6 @@ const verifyToken = (req, res, next) => {
 };
 
 
-
 app.post('/register', async (req, res) => {
     const { username, password, gmail, rol } = req.body;
     const last_login = new Date().toISOString(); 
@@ -73,21 +72,25 @@ app.post('/register', async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        await usersRef.add({
+        const userRef = usersRef.doc(); // Crear un nuevo documento con un ID único
+
+        await userRef.set({
             username,
             password: hashedPassword,
             gmail,
             last_login,
-            rol
+            rol,
+            id: userRef.id 
         });
 
-        return res.status(201).json({ statusCode: 201, intMessage: 'Usuario registrado con éxito', data: { username, gmail } });
+        return res.status(201).json({ statusCode: 201, intMessage: 'Usuario registrado con éxito', data: { username, gmail, id: userRef.id } });
 
     } catch (err) {
         console.error('Error registrando usuario:', err);
         return res.status(500).json({ statusCode: 500, intMessage: 'Internal Server Error' });
     }
 });
+
 
 app.post('/validate', async (req, res) => {
     const { username, password } = req.body;
@@ -181,7 +184,7 @@ app.get('/all-tasks', async (req, res) => {
     }
 });
 
-app.put('/tasks/edit/:id', verifyToken, async (req, res) => {
+app.put('/tasks/update/:id', verifyToken, async (req, res) => {
     try {
         const { id } = req.params;
         const { category, description, name_task, status, time_until_finish, remind_me } = req.body;
