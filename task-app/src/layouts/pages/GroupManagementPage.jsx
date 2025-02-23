@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Select, Input, message, Modal, Form } from 'antd';
+import { Button, Select, Input, message, Modal, Form, List } from 'antd';
 import axios from 'axios';
 import MainLayout from "../../layouts/MainLayout"; // Asegúrate de que este componente esté disponible
 
@@ -41,29 +41,28 @@ const GroupManagementPage = () => {
     }, []); // Dependencia vacía para ejecutar solo al montar el componente
 
     const onCreateTask = async (values) => {
-      try {
-        const token = localStorage.getItem('token'); // o donde sea que guardes tu token
-        const response = await axios.post(
-          `http://localhost:3000/groups/${selectedGroupId}/tasks`,
-          {
-            name: values.name_task,
-            description: values.description,
-            status: values.status,
-            // Incluye otros campos que necesites
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`, // Agrega el token aquí
-            },
-          }
-        );
-        console.log('Tarea creada:', response.data);
-      } catch (error) {
-        console.error('Error al crear la tarea:', error.response ? error.response.data : error.message);
-      }
+        try {
+            const token = localStorage.getItem('token'); // o donde sea que guardes tu token
+            const response = await axios.post(
+                `http://localhost:3000/groups/${selectedGroupId}/tasks`,
+                {
+                    name: values.name_task,
+                    description: values.description,
+                    status: values.status,
+                    // Incluye otros campos que necesites
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`, // Agrega el token aquí
+                    },
+                }
+            );
+            console.log('Tarea creada:', response.data);
+            fetchTasks(selectedGroupId); // Refrescar la lista de tareas
+        } catch (error) {
+            console.error('Error al crear la tarea:', error.response ? error.response.data : error.message);
+        }
     };
-    
-    
 
     const handleAddMember = async (username, role) => {
         try {
@@ -126,6 +125,27 @@ const GroupManagementPage = () => {
 
             {selectedGroupId && (
                 <AddMemberForm groupId={selectedGroupId} onAddMember={handleAddMember} />
+            )}
+
+            {tasks.length > 0 && (
+                <div style={{ marginTop: 20 }}>
+                    <h3>Tareas del Grupo</h3>
+                    <List
+                        bordered
+                        dataSource={tasks}
+                        renderItem={task => (
+                            <List.Item>
+                                <div>
+                                    <strong>Nombre de la Tarea:</strong> {task.name_task} <br />
+                                    <strong>Descripción:</strong> {task.description} <br />
+                                    <strong>Estado:</strong> {task.status} <br />
+                                    <strong>Fecha de Creación:</strong> {new Date(task.timestamp).toLocaleString()} <br />
+                                    {/* Agrega más detalles si los tienes, como `remind_me`, etc. */}
+                                </div>
+                            </List.Item>
+                        )}
+                    />
+                </div>
             )}
         </MainLayout>
     );
