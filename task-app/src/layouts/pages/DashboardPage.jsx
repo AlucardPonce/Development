@@ -5,7 +5,7 @@ import MainLayout from "../../layouts/MainLayout";
 import axios from "axios";
 import dayjs from "dayjs";
 
-const TaskForm = ({ visible, onCreate, onCancel, taskData }) => {
+const TaskForm = ({ visible, onCreate, onCancel, taskData, groups }) => {
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -29,7 +29,7 @@ const TaskForm = ({ visible, onCreate, onCancel, taskData }) => {
     });
     form.resetFields();
   };
-  
+
   return (
     <Modal
       open={visible}
@@ -86,6 +86,17 @@ const TaskForm = ({ visible, onCreate, onCancel, taskData }) => {
         >
           <Input />
         </Form.Item>
+        <Form.Item
+          name="groupId"
+          label="Grupo"
+          rules={[{ required: true, message: "Por favor selecciona un grupo" }]}
+        >
+          <Select placeholder="Seleccione un grupo">
+            {groups.map((group) => (
+              <Select.Option key={group.id} value={group.id}>{group.name}</Select.Option>
+            ))}
+          </Select>
+        </Form.Item>
       </Form>
     </Modal>
   );
@@ -95,19 +106,30 @@ const DashboardPage = () => {
   const [visible, setVisible] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [editingTask, setEditingTask] = useState(null);
-  const [userToken, setUserToken] = useState(localStorage.getItem("token"));
+  const [groups, setGroups] = useState([]);
+  const userToken = localStorage.getItem("token");
 
   const fetchTasks = async () => {
     try {
       const response = await axios.get("http://localhost:3000/tasks", {
-        headers: {
-          Authorization: `Bearer ${userToken}`,
-        },
+        headers: { Authorization: `Bearer ${userToken}` },
       });
       setTasks(response.data.tasks);
     } catch (error) {
       console.error("Error al obtener tareas:", error);
       message.error("Error al obtener tareas");
+    }
+  };
+
+  const fetchGroups = async () => {
+    try {
+      const response = await axios.get("http://localhost:3000/groups", {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      setGroups(response.data.groups);
+    } catch (error) {
+      console.error("Error al obtener grupos:", error);
+      message.error("Error al obtener grupos");
     }
   };
 
@@ -142,7 +164,6 @@ const DashboardPage = () => {
   };
 
   const onDelete = async (id) => {
-    console.log("Eliminando tarea con ID:", id);
     if (!id) {
       message.error("ID de tarea no válido");
       return;
@@ -160,8 +181,12 @@ const DashboardPage = () => {
       message.error("Error al eliminar la tarea");
     }
   };
+
   useEffect(() => {
-    if (userToken) fetchTasks();
+    if (userToken) {
+      fetchTasks();
+      fetchGroups(); // Carga de grupos
+    }
   }, [userToken]);
 
   return (
@@ -233,6 +258,7 @@ const DashboardPage = () => {
           onCreate={onCreateOrUpdate}
           onCancel={() => setVisible(false)}
           taskData={editingTask}
+          groups={groups} // Pasar grupos al formulario de tareas
         />
       </div>
     </MainLayout>

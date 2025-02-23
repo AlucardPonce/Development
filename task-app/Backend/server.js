@@ -246,6 +246,7 @@ app.delete('/tasks/delete/:id', verifyToken, async (req, res) => {
 });
 
 // $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$   API PARA CREAR GRUPO $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
 // API para crear un nuevo grupo
 app.post('/groups', verifyToken, async (req, res) => {
     const { groupName } = req.body;
@@ -268,21 +269,18 @@ app.post('/groups', verifyToken, async (req, res) => {
 app.get('/groups', verifyToken, async (req, res) => {
     try {
         const groupsSnapshot = await db.collection('GROUPS').where('members', 'array-contains', req.username).get();
-        const groups = groupsSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return { id: doc.id, ...data, members: data.members || [] }; // Incluir los miembros
-        });
+        const groups = groupsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         res.status(200).json({ statusCode: 200, groups });
     } catch (err) {
         res.status(500).json({ statusCode: 500, intMessage: 'Error interno del servidor', error: err.message });
     }
 });
 
-
 // El resto de tus rutas de grupo también deberían usar verifyToken
+// Agregar usuario a un grupo
 app.post('/groups/:groupId/add-user', verifyToken, async (req, res) => {
     const { groupId } = req.params;
-    const { username, role } = req.body; // Añadir el rol aquí
+    const { username } = req.body;
 
     try {
         const groupRef = db.collection('GROUPS').doc(groupId);
@@ -293,11 +291,11 @@ app.post('/groups/:groupId/add-user', verifyToken, async (req, res) => {
         }
 
         let groupData = groupDoc.data();
-        if (groupData.members.some(member => member.username === username)) {
+        if (groupData.members.includes(username)) {
             return res.status(400).json({ statusCode: 400, intMessage: 'El usuario ya está en el grupo' });
         }
 
-        groupData.members.push({ username, role }); // Almacenar el usuario junto con su rol
+        groupData.members.push(username);
         await groupRef.update({ members: groupData.members });
 
         res.status(200).json({ statusCode: 200, intMessage: 'Usuario agregado al grupo con éxito' });
@@ -383,6 +381,47 @@ app.put('/groups/:groupId/tasks/:taskId/status', verifyToken, async (req, res) =
         res.status(500).json({ statusCode: 500, intMessage: 'Error interno del servidor', error: err.message });
     }
 });
+
+app.post('/groups/:groupId/add-user', verifyToken, async (req, res) => {
+    const { groupId } = req.params;
+    const { username, role } = req.body; // Añadir el rol aquí
+
+    try {
+        const groupRef = db.collection('GROUPS').doc(groupId);
+        const groupDoc = await groupRef.get();
+
+        if (!groupDoc.exists) {
+            return res.status(404).json({ statusCode: 404, intMessage: 'Grupo no encontrado' });
+        }
+
+        let groupData = groupDoc.data();
+        if (groupData.members.some(member => member.username === username)) {
+            return res.status(400).json({ statusCode: 400, intMessage: 'El usuario ya está en el grupo' });
+        }
+
+        groupData.members.push({ username, role }); // Almacenar el usuario junto con su rol
+        await groupRef.update({ members: groupData.members });
+
+        res.status(200).json({ statusCode: 200, intMessage: 'Usuario agregado al grupo con éxito' });
+    } catch (err) {
+        res.status(500).json({ statusCode: 500, intMessage: 'Error interno del servidor', error: err.message });
+    }
+});
+
+app.get('/groups', verifyToken, async (req, res) => {
+    try {
+        const groupsSnapshot = await db.collection('GROUPS').where('members', 'array-contains', req.username).get();
+        const groups = groupsSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return { id: doc.id, ...data, members: data.members || [] }; // Incluir los miembros
+        });
+        res.status(200).json({ statusCode: 200, groups });
+    } catch (err) {
+        res.status(500).json({ statusCode: 500, intMessage: 'Error interno del servidor', error: err.message });
+    }
+});
+
+
 
 
 app.listen(port, () => {
