@@ -1,18 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Select, Input, message, Modal, Form, List } from 'antd';
 import axios from 'axios';
-import MainLayout from "../../layouts/MainLayout"; // Asegúrate de que este componente esté disponible
+import MainLayout from "../../layouts/MainLayout";
 
 const GroupManagementPage = () => {
-    const [groups, setGroups] = useState([]); // Estado para grupos
-    const [selectedGroupId, setSelectedGroupId] = useState(null); // Grupo seleccionado
+    const [groups, setGroups] = useState([]);
+    const [selectedGroupId, setSelectedGroupId] = useState(null);
     const [visible, setVisible] = useState(false);
-    const userToken = localStorage.getItem('token'); // Asegúrate de obtener el token de la forma correcta
-    const [tasks, setTasks] = useState([]); // Estado para tareas
+    const [visibleGroupModal, setVisibleGroupModal] = useState(false);
+    const userToken = localStorage.getItem('token');
+    const [tasks, setTasks] = useState([]);
+    const [users, setUsers] = useState([]);
 
+    // Obtener la lista de grupos
     const fetchGroups = async () => {
         try {
-            const response = await axios.get('http://localhost:3000/groups', {
+            const response = await axios.get('http://localhost:3000/user/groups', {
                 headers: {
                     Authorization: `Bearer ${userToken}`,
                 },
@@ -23,6 +26,7 @@ const GroupManagementPage = () => {
         }
     };
 
+    // Obtener la lista de tareas de un grupo
     const fetchTasks = async (groupId) => {
         try {
             const response = await axios.get(`http://localhost:3000/groups/${groupId}/tasks`, {
@@ -36,39 +40,83 @@ const GroupManagementPage = () => {
         }
     };
 
-    useEffect(() => {
-        fetchGroups();
-    }, []); // Dependencia vacía para ejecutar solo al montar el componente
-
-    const onCreateTask = async (values) => {
+    // Obtener la lista de usuarios
+    const fetchUsers = async () => {
         try {
-            const token = localStorage.getItem('token'); // o donde sea que guardes tu token
-            const response = await axios.post(
-                `http://localhost:3000/groups/${selectedGroupId}/tasks`,
-                {
-                    name: values.name_task,
-                    description: values.description,
-                    status: values.status,
-                    // Incluye otros campos que necesites
+            const response = await axios.get('http://localhost:3000/users', {
+                headers: {
+                    Authorization: `Bearer ${userToken}`,
                 },
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`, // Agrega el token aquí
-                    },
-                }
-            );
-            console.log('Tarea creada:', response.data);
-            fetchTasks(selectedGroupId); // Refrescar la lista de tareas
+            });
+            setUsers(response.data.users);
         } catch (error) {
-            console.error('Error al crear la tarea:', error.response ? error.response.data : error.message);
+            console.error('Error al obtener usuarios:', error);
         }
     };
 
-    const handleAddMember = async (username, role) => {
+    // Crear una tarea
+    const onCreateTask = async (values) => {
         try {
-            await axios.post(`http://localhost:3000/groups/${selectedGroupId}/add-user`, { username, role }, {
-                headers: { Authorization: `Bearer ${userToken}` },
-            });
+            const response = await axios.post(
+                `http://localhost:3000/groups/${selectedGroupId}/tasks`,
+                {
+                    category: values.category,
+                    description: values.description,
+                    name_task: values.name_task,
+                    status: values.status,
+                    time_until_finish: values.time_until_finish,
+                    remind_me: values.remind_me,
+                    assignedTo: values.assignedTo,
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${userToken}`,
+                    },
+                }
+            );
+            message.success('Tarea creada con éxito');
+            fetchTasks(selectedGroupId); // Actualizar la lista de tareas
+            setVisible(false); // Cerrar el modal
+        } catch (error) {
+            console.error('Error al crear la tarea:', error.response ? error.response.data : error.message);
+            message.error('Error al crear la tarea');
+        }
+    };
+
+    // Crear un grupo
+    const onCreateGroup = async (values) => {
+        try {
+            const response = await axios.post(
+                'http://localhost:3000/groups',
+                {
+                    name: values.groupName,
+                    description: values.description,
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${userToken}`,
+                    },
+                }
+            );
+            message.success('Grupo creado con éxito');
+            setVisibleGroupModal(false);
+            fetchGroups(); // Actualizar la lista de grupos
+        } catch (error) {
+            console.error('Error al crear el grupo:', error.response ? error.response.data : error.message);
+            message.error('Error al crear el grupo');
+        }
+    };
+
+    // Agregar un miembro a un grupo
+    const handleAddMember = async (username) => {
+        try {
+            await axios.post(
+                `http://localhost:3000/groups/${selectedGroupId}/add-member`,
+                { usernameToAdd: username },
+                {
+                    headers: { Authorization: `Bearer ${userToken}` },
+                }
+            );
             message.success('Usuario agregado con éxito');
         } catch (error) {
             console.error('Error al agregar usuario:', error);
@@ -76,14 +124,24 @@ const GroupManagementPage = () => {
         }
     };
 
+    // Obtener datos iniciales
+    useEffect(() => {
+        fetchGroups();
+        fetchUsers();
+    }, []);
+
     return (
         <MainLayout>
+            {/* Botón para crear un grupo */}
+            <Button onClick={() => setVisibleGroupModal(true)}>Crear Grupo</Button>
+
+            {/* Seleccionar un grupo */}
             <Select
                 style={{ width: 200, marginBottom: 20 }}
                 placeholder="Selecciona un grupo"
                 onChange={(value) => {
                     setSelectedGroupId(value);
-                    fetchTasks(value); // Obtener tareas del grupo seleccionado
+                    fetchTasks(value);
                 }}
             >
                 {groups.map(group => (
@@ -93,8 +151,10 @@ const GroupManagementPage = () => {
                 ))}
             </Select>
 
+            {/* Botón para crear una tarea */}
             <Button onClick={() => setVisible(true)}>Crear Tarea</Button>
 
+            {/* Modal para crear una tarea */}
             <Modal
                 title="Crear Tarea"
                 visible={visible}
@@ -102,19 +162,81 @@ const GroupManagementPage = () => {
                 footer={null}
             >
                 <Form onFinish={onCreateTask}>
-                    <Form.Item name="name_task" label="Nombre de la Tarea" rules={[{ required: true, message: 'Por favor ingresa el nombre de la tarea' }]}>
+                    {/* Nombre de la Tarea */}
+                    <Form.Item
+                        name="name_task"
+                        label="Nombre de la Tarea"
+                        rules={[{ required: true, message: 'Por favor ingresa el nombre de la tarea' }]}
+                    >
                         <Input />
                     </Form.Item>
-                    <Form.Item name="description" label="Descripción">
+
+                    {/* Descripción de la Tarea */}
+                    <Form.Item
+                        name="description"
+                        label="Descripción"
+                        rules={[{ required: true, message: 'Por favor ingresa la descripción de la tarea' }]}
+                    >
                         <Input.TextArea />
                     </Form.Item>
-                    <Form.Item name="status" label="Estado" initialValue="pendiente">
+
+                    {/* Categoría de la Tarea */}
+                    <Form.Item
+                        name="category"
+                        label="Categoría"
+                        rules={[{ required: true, message: 'Por favor ingresa la categoría de la tarea' }]}
+                    >
+                        <Input />
+                    </Form.Item>
+
+                    {/* Estado de la Tarea */}
+                    <Form.Item
+                        name="status"
+                        label="Estado"
+                        initialValue="pendiente"
+                        rules={[{ required: true, message: 'Por favor selecciona un estado' }]}
+                    >
                         <Select>
                             <Select.Option value="pendiente">Pendiente</Select.Option>
                             <Select.Option value="en progreso">En Progreso</Select.Option>
                             <Select.Option value="completado">Completado</Select.Option>
                         </Select>
                     </Form.Item>
+
+                    {/* Fecha Límite */}
+                    <Form.Item
+                        name="time_until_finish"
+                        label="Fecha Límite"
+                        rules={[{ required: true, message: 'Por favor ingresa la fecha límite' }]}
+                    >
+                        <Input type="datetime-local" />
+                    </Form.Item>
+
+                    {/* Recordatorio */}
+                    <Form.Item
+                        name="remind_me"
+                        label="Recordatorio"
+                        rules={[{ required: true, message: 'Por favor ingresa el recordatorio' }]}
+                    >
+                        <Input type="datetime-local" />
+                    </Form.Item>
+
+                    {/* Asignar a un Usuario */}
+                    <Form.Item
+                        name="assignedTo"
+                        label="Asignar a"
+                        rules={[{ required: true, message: 'Por favor selecciona un usuario' }]}
+                    >
+                        <Select placeholder="Selecciona un usuario">
+                            {users.map(user => (
+                                <Select.Option key={user.username} value={user.username}>
+                                    {user.username}
+                                </Select.Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
+
+                    {/* Botón de Envío */}
                     <Form.Item>
                         <Button type="primary" htmlType="submit">
                             Crear Tarea
@@ -123,10 +245,42 @@ const GroupManagementPage = () => {
                 </Form>
             </Modal>
 
+            {/* Modal para crear un grupo */}
+            <Modal
+                title="Crear Grupo"
+                visible={visibleGroupModal}
+                onCancel={() => setVisibleGroupModal(false)}
+                footer={null}
+            >
+                <Form onFinish={onCreateGroup}>
+                    <Form.Item
+                        name="groupName"
+                        label="Nombre del Grupo"
+                        rules={[{ required: true, message: 'Por favor ingresa el nombre del grupo' }]}
+                    >
+                        <Input />
+                    </Form.Item>
+                    <Form.Item
+                        name="description"
+                        label="Descripción del Grupo"
+                        rules={[{ required: true, message: 'Por favor ingresa la descripción del grupo' }]}
+                    >
+                        <Input.TextArea />
+                    </Form.Item>
+                    <Form.Item>
+                        <Button type="primary" htmlType="submit">
+                            Crear Grupo
+                        </Button>
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            {/* Formulario para agregar miembros */}
             {selectedGroupId && (
                 <AddMemberForm groupId={selectedGroupId} onAddMember={handleAddMember} />
             )}
 
+            {/* Lista de tareas del grupo seleccionado */}
             {tasks.length > 0 && (
                 <div style={{ marginTop: 20 }}>
                     <h3>Tareas del Grupo</h3>
@@ -138,9 +292,12 @@ const GroupManagementPage = () => {
                                 <div>
                                     <strong>Nombre de la Tarea:</strong> {task.name_task} <br />
                                     <strong>Descripción:</strong> {task.description} <br />
+                                    <strong>Categoría:</strong> {task.category} <br />
                                     <strong>Estado:</strong> {task.status} <br />
                                     <strong>Fecha de Creación:</strong> {new Date(task.timestamp).toLocaleString()} <br />
-                                    {/* Agrega más detalles si los tienes, como `remind_me`, etc. */}
+                                    <strong>Fecha Límite:</strong> {task.time_until_finish} <br />
+                                    <strong>Recordatorio:</strong> {task.remind_me} <br />
+                                    <strong>Asignado a:</strong> {task.assignedTo} <br />
                                 </div>
                             </List.Item>
                         )}
@@ -151,17 +308,16 @@ const GroupManagementPage = () => {
     );
 };
 
+// Componente para agregar miembros a un grupo
 const AddMemberForm = ({ groupId, onAddMember }) => {
     const [username, setUsername] = useState('');
-    const [role, setRole] = useState('');
 
     const handleAdd = () => {
-        if (username && role) {
-            onAddMember(username, role);
+        if (username) {
+            onAddMember(username);
             setUsername('');
-            setRole('');
         } else {
-            message.error('Por favor ingresa un nombre de usuario y selecciona un rol');
+            message.error('Por favor ingresa un nombre de usuario');
         }
     };
 
@@ -174,15 +330,6 @@ const AddMemberForm = ({ groupId, onAddMember }) => {
                 onChange={(e) => setUsername(e.target.value)}
                 style={{ marginBottom: 10 }}
             />
-            <Select
-                placeholder="Selecciona un rol"
-                onChange={(value) => setRole(value)}
-                style={{ marginBottom: 10, width: 200 }}
-            >
-                <Select.Option value="admin">Admin</Select.Option>
-                <Select.Option value="member">Miembro</Select.Option>
-                {/* Otros roles según sea necesario */}
-            </Select>
             <Button onClick={handleAdd}>Agregar Miembro</Button>
         </div>
     );
