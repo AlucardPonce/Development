@@ -6,6 +6,7 @@ import LoginPage from "./layouts/pages/LoginPage";
 import DashboardPage from "./layouts/pages/DashboardPage";
 import RegisterPage from "./layouts/pages/register";
 import GroupManagementPage from "./layouts/pages/GroupManagementPage";
+import UserManagementPage from "./layouts/pages/UserManagementPage";
 
 const App = () => {
   return (
@@ -16,6 +17,8 @@ const App = () => {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/group" element={<GroupManagementPage />} />
+        {/* Nueva ruta para la administración de usuarios */}
+        <Route path="/admin/users" element={<UserManagementPage />} />
       </Routes>
     </Router>
   );

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Select, Input, message, Modal, Form, List } from 'antd';
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import MainLayout from "../../layouts/MainLayout";
 
@@ -8,6 +9,8 @@ const GroupManagementPage = () => {
     const [selectedGroupId, setSelectedGroupId] = useState(null);
     const [visible, setVisible] = useState(false);
     const [visibleGroupModal, setVisibleGroupModal] = useState(false);
+    const [visibleEditModal, setVisibleEditModal] = useState(false);
+    const [editingTask, setEditingTask] = useState(null);
     const userToken = localStorage.getItem('token');
     const [tasks, setTasks] = useState([]);
     const [users, setUsers] = useState([]);
@@ -83,6 +86,68 @@ const GroupManagementPage = () => {
         }
     };
 
+    // Editar una tarea
+    const onEditTask = async (values) => {
+        try {
+            const response = await axios.put(
+                `http://localhost:3000/tasks/update/${editingTask.id}`,
+                {
+                    ...values,
+                    time_until_finish: values.time_until_finish,
+                    remind_me: values.remind_me,
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${userToken}`,
+                    },
+                }
+            );
+
+            message.success('Tarea actualizada con éxito');
+            fetchTasks(selectedGroupId); // Actualizar la lista de tareas
+            setVisibleEditModal(false); // Cerrar el modal de edición
+        } catch (error) {
+            console.error('Error al actualizar la tarea:', error.response ? error.response.data : error.message);
+            message.error('Error al actualizar la tarea');
+        }
+    };
+
+    // Eliminar una tarea
+    const onDeleteTask = async (taskId) => {
+        try {
+            await axios.delete(`http://localhost:3000/tasks/delete/${taskId}`, {
+                headers: {
+                    Authorization: `Bearer ${userToken}`,
+                },
+            });
+            message.success('Tarea eliminada con éxito');
+            fetchTasks(selectedGroupId); // Actualizar la lista de tareas
+        } catch (error) {
+            console.error('Error al eliminar la tarea:', error.response ? error.response.data : error.message);
+            message.error('Error al eliminar la tarea');
+        }
+    };
+
+    // Cambiar el estado de una tarea
+    const onChangeStatus = async (taskId, newStatus) => {
+        try {
+            await axios.put(
+                `http://localhost:3000/tasks/update/${taskId}`,
+                { status: newStatus },
+                {
+                    headers: {
+                        Authorization: `Bearer ${userToken}`,
+                    },
+                }
+            );
+            message.success('Estado de la tarea actualizado con éxito');
+            fetchTasks(selectedGroupId); // Actualizar la lista de tareas
+        } catch (error) {
+            console.error('Error al actualizar el estado:', error.response ? error.response.data : error.message);
+            message.error('Error al actualizar el estado');
+        }
+    };
+
     // Crear un grupo
     const onCreateGroup = async (values) => {
         try {
@@ -98,8 +163,9 @@ const GroupManagementPage = () => {
                     },
                 }
             );
+
             message.success('Grupo creado con éxito');
-            setVisibleGroupModal(false);
+            setVisibleGroupModal(false); // Cerrar el modal
             fetchGroups(); // Actualizar la lista de grupos
         } catch (error) {
             console.error('Error al crear el grupo:', error.response ? error.response.data : error.message);
@@ -107,19 +173,23 @@ const GroupManagementPage = () => {
         }
     };
 
-    // Agregar un miembro a un grupo
+    // Agregar un miembro al grupo
     const handleAddMember = async (username) => {
         try {
-            await axios.post(
+            const response = await axios.post(
                 `http://localhost:3000/groups/${selectedGroupId}/add-member`,
                 { usernameToAdd: username },
                 {
-                    headers: { Authorization: `Bearer ${userToken}` },
+                    headers: {
+                        Authorization: `Bearer ${userToken}`,
+                    },
                 }
             );
+
             message.success('Usuario agregado con éxito');
+            fetchGroups(); // Actualizar la lista de grupos
         } catch (error) {
-            console.error('Error al agregar usuario:', error);
+            console.error('Error al agregar usuario:', error.response ? error.response.data : error.message);
             message.error('Error al agregar usuario');
         }
     };
@@ -134,116 +204,6 @@ const GroupManagementPage = () => {
         <MainLayout>
             {/* Botón para crear un grupo */}
             <Button onClick={() => setVisibleGroupModal(true)}>Crear Grupo</Button>
-
-            {/* Seleccionar un grupo */}
-            <Select
-                style={{ width: 200, marginBottom: 20 }}
-                placeholder="Selecciona un grupo"
-                onChange={(value) => {
-                    setSelectedGroupId(value);
-                    fetchTasks(value);
-                }}
-            >
-                {groups.map(group => (
-                    <Select.Option key={group.id} value={group.id}>
-                        {group.name}
-                    </Select.Option>
-                ))}
-            </Select>
-
-            {/* Botón para crear una tarea */}
-            <Button onClick={() => setVisible(true)}>Crear Tarea</Button>
-
-            {/* Modal para crear una tarea */}
-            <Modal
-                title="Crear Tarea"
-                visible={visible}
-                onCancel={() => setVisible(false)}
-                footer={null}
-            >
-                <Form onFinish={onCreateTask}>
-                    {/* Nombre de la Tarea */}
-                    <Form.Item
-                        name="name_task"
-                        label="Nombre de la Tarea"
-                        rules={[{ required: true, message: 'Por favor ingresa el nombre de la tarea' }]}
-                    >
-                        <Input />
-                    </Form.Item>
-
-                    {/* Descripción de la Tarea */}
-                    <Form.Item
-                        name="description"
-                        label="Descripción"
-                        rules={[{ required: true, message: 'Por favor ingresa la descripción de la tarea' }]}
-                    >
-                        <Input.TextArea />
-                    </Form.Item>
-
-                    {/* Categoría de la Tarea */}
-                    <Form.Item
-                        name="category"
-                        label="Categoría"
-                        rules={[{ required: true, message: 'Por favor ingresa la categoría de la tarea' }]}
-                    >
-                        <Input />
-                    </Form.Item>
-
-                    {/* Estado de la Tarea */}
-                    <Form.Item
-                        name="status"
-                        label="Estado"
-                        initialValue="pendiente"
-                        rules={[{ required: true, message: 'Por favor selecciona un estado' }]}
-                    >
-                        <Select>
-                            <Select.Option value="pendiente">Pendiente</Select.Option>
-                            <Select.Option value="en progreso">En Progreso</Select.Option>
-                            <Select.Option value="completado">Completado</Select.Option>
-                        </Select>
-                    </Form.Item>
-
-                    {/* Fecha Límite */}
-                    <Form.Item
-                        name="time_until_finish"
-                        label="Fecha Límite"
-                        rules={[{ required: true, message: 'Por favor ingresa la fecha límite' }]}
-                    >
-                        <Input type="datetime-local" />
-                    </Form.Item>
-
-                    {/* Recordatorio */}
-                    <Form.Item
-                        name="remind_me"
-                        label="Recordatorio"
-                        rules={[{ required: true, message: 'Por favor ingresa el recordatorio' }]}
-                    >
-                        <Input type="datetime-local" />
-                    </Form.Item>
-
-                    {/* Asignar a un Usuario */}
-                    <Form.Item
-                        name="assignedTo"
-                        label="Asignar a"
-                        rules={[{ required: true, message: 'Por favor selecciona un usuario' }]}
-                    >
-                        <Select placeholder="Selecciona un usuario">
-                            {users.map(user => (
-                                <Select.Option key={user.username} value={user.username}>
-                                    {user.username}
-                                </Select.Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-
-                    {/* Botón de Envío */}
-                    <Form.Item>
-                        <Button type="primary" htmlType="submit">
-                            Crear Tarea
-                        </Button>
-                    </Form.Item>
-                </Form>
-            </Modal>
 
             {/* Modal para crear un grupo */}
             <Modal
@@ -275,9 +235,186 @@ const GroupManagementPage = () => {
                 </Form>
             </Modal>
 
+            {/* Seleccionar un grupo */}
+            <Select
+                style={{ width: 200, marginBottom: 20 }}
+                placeholder="Selecciona un grupo"
+                onChange={(value) => {
+                    setSelectedGroupId(value);
+                    fetchTasks(value);
+                }}
+            >
+                {groups.map(group => (
+                    <Select.Option key={group.id} value={group.id}>
+                        {group.name}
+                    </Select.Option>
+                ))}
+            </Select>
+
+            {/* Botón para crear una tarea */}
+            <Button onClick={() => setVisible(true)}>Crear Tarea</Button>
+
+            {/* Modal para crear una tarea */}
+            <Modal
+                title="Crear Tarea"
+                visible={visible}
+                onCancel={() => setVisible(false)}
+                footer={null}
+            >
+                <Form onFinish={onCreateTask}>
+                    <Form.Item
+                        name="name_task"
+                        label="Nombre de la Tarea"
+                        rules={[{ required: true, message: 'Por favor ingresa el nombre de la tarea' }]}
+                    >
+                        <Input />
+                    </Form.Item>
+                    <Form.Item
+                        name="description"
+                        label="Descripción"
+                        rules={[{ required: true, message: 'Por favor ingresa la descripción de la tarea' }]}
+                    >
+                        <Input.TextArea />
+                    </Form.Item>
+                    <Form.Item
+                        name="category"
+                        label="Categoría"
+                        rules={[{ required: true, message: 'Por favor ingresa la categoría de la tarea' }]}
+                    >
+                        <Input />
+                    </Form.Item>
+                    <Form.Item
+                        name="status"
+                        label="Estado"
+                        initialValue="pendiente"
+                        rules={[{ required: true, message: 'Por favor selecciona un estado' }]}
+                    >
+                        <Select>
+                            <Select.Option value="pendiente">Pendiente</Select.Option>
+                            <Select.Option value="en progreso">En Progreso</Select.Option>
+                            <Select.Option value="completado">Completado</Select.Option>
+                        </Select>
+                    </Form.Item>
+                    <Form.Item
+                        name="time_until_finish"
+                        label="Fecha Límite"
+                        rules={[{ required: true, message: 'Por favor ingresa la fecha límite' }]}
+                    >
+                        <Input type="datetime-local" />
+                    </Form.Item>
+                    <Form.Item
+                        name="remind_me"
+                        label="Recordatorio"
+                        rules={[{ required: true, message: 'Por favor ingresa el recordatorio' }]}
+                    >
+                        <Input type="datetime-local" />
+                    </Form.Item>
+                    <Form.Item
+                        name="assignedTo"
+                        label="Asignar a"
+                        rules={[{ required: true, message: 'Por favor selecciona un usuario' }]}
+                    >
+                        <Select placeholder="Selecciona un usuario">
+                            {users.map(user => (
+                                <Select.Option key={user.username} value={user.username}>
+                                    {user.username}
+                                </Select.Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
+                    <Form.Item>
+                        <Button type="primary" htmlType="submit">
+                            Crear Tarea
+                        </Button>
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            {/* Modal para editar una tarea */}
+            <Modal
+                title="Editar Tarea"
+                visible={visibleEditModal}
+                onCancel={() => setVisibleEditModal(false)}
+                footer={null}
+            >
+                <Form
+                    initialValues={{
+                        ...editingTask,
+                        time_until_finish: editingTask?.time_until_finish,
+                        remind_me: editingTask?.remind_me,
+                    }}
+                    onFinish={onEditTask}
+                >
+                    <Form.Item
+                        name="name_task"
+                        label="Nombre de la Tarea"
+                        rules={[{ required: true, message: 'Por favor ingresa el nombre de la tarea' }]}
+                    >
+                        <Input />
+                    </Form.Item>
+                    <Form.Item
+                        name="description"
+                        label="Descripción"
+                        rules={[{ required: true, message: 'Por favor ingresa la descripción de la tarea' }]}
+                    >
+                        <Input.TextArea />
+                    </Form.Item>
+                    <Form.Item
+                        name="category"
+                        label="Categoría"
+                        rules={[{ required: true, message: 'Por favor ingresa la categoría de la tarea' }]}
+                    >
+                        <Input />
+                    </Form.Item>
+                    <Form.Item
+                        name="status"
+                        label="Estado"
+                        rules={[{ required: true, message: 'Por favor selecciona un estado' }]}
+                    >
+                        <Select>
+                            <Select.Option value="pendiente">Pendiente</Select.Option>
+                            <Select.Option value="en progreso">En Progreso</Select.Option>
+                            <Select.Option value="completado">Completado</Select.Option>
+                        </Select>
+                    </Form.Item>
+                    <Form.Item
+                        name="time_until_finish"
+                        label="Fecha Límite"
+                        rules={[{ required: true, message: 'Por favor ingresa la fecha límite' }]}
+                    >
+                        <Input type="datetime-local" />
+                    </Form.Item>
+                    <Form.Item
+                        name="remind_me"
+                        label="Recordatorio"
+                        rules={[{ required: true, message: 'Por favor ingresa el recordatorio' }]}
+                    >
+                        <Input type="datetime-local" />
+                    </Form.Item>
+                    <Form.Item
+                        name="assignedTo"
+                        label="Asignar a"
+                        rules={[{ required: true, message: 'Por favor selecciona un usuario' }]}
+                    >
+                        <Select placeholder="Selecciona un usuario">
+                            {users.map(user => (
+                                <Select.Option key={user.username} value={user.username}>
+                                    {user.username}
+                                </Select.Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
+                    <Form.Item>
+                        <Button type="primary" htmlType="submit">
+                            Actualizar Tarea
+                        </Button>
+                    </Form.Item>
+                </Form>
+            </Modal>
+
             {/* Formulario para agregar miembros */}
             {selectedGroupId && (
-                <AddMemberForm groupId={selectedGroupId} onAddMember={handleAddMember} />
+                <AddMemberForm groupId={selectedGroupId} onAddMember={handleAddMember} users={users} />
             )}
 
             {/* Lista de tareas del grupo seleccionado */}
@@ -288,17 +425,43 @@ const GroupManagementPage = () => {
                         bordered
                         dataSource={tasks}
                         renderItem={task => (
-                            <List.Item>
-                                <div>
-                                    <strong>Nombre de la Tarea:</strong> {task.name_task} <br />
-                                    <strong>Descripción:</strong> {task.description} <br />
-                                    <strong>Categoría:</strong> {task.category} <br />
-                                    <strong>Estado:</strong> {task.status} <br />
-                                    <strong>Fecha de Creación:</strong> {new Date(task.timestamp).toLocaleString()} <br />
-                                    <strong>Fecha Límite:</strong> {task.time_until_finish} <br />
-                                    <strong>Recordatorio:</strong> {task.remind_me} <br />
-                                    <strong>Asignado a:</strong> {task.assignedTo} <br />
-                                </div>
+                            <List.Item
+                                actions={[
+                                    <Select
+                                        defaultValue={task.status}
+                                        style={{ width: 120 }}
+                                        onChange={(value) => onChangeStatus(task.id, value)}
+                                    >
+                                        <Select.Option value="pendiente">Pendiente</Select.Option>
+                                        <Select.Option value="en progreso">En Progreso</Select.Option>
+                                        <Select.Option value="completado">Completado</Select.Option>
+                                    </Select>,
+                                    <Button
+                                        icon={<EditOutlined />}
+                                        onClick={() => {
+                                            setEditingTask(task);
+                                            setVisibleEditModal(true);
+                                        }}
+                                    />,
+                                    <Button
+                                        icon={<DeleteOutlined />}
+                                        onClick={() => onDeleteTask(task.id)}
+                                        danger
+                                    />,
+                                ]}
+                            >
+                                <List.Item.Meta
+                                    title={task.name_task}
+                                    description={
+                                        <>
+                                            <p>{task.description}</p>
+                                            <p><strong>Categoría:</strong> {task.category}</p>
+                                            <p><strong>Asignado a:</strong> {task.assignedTo}</p>
+                                            <p><strong>Fecha Límite:</strong> {task.time_until_finish}</p>
+                                            <p><strong>Recordatorio:</strong> {task.remind_me}</p>
+                                        </>
+                                    }
+                                />
                             </List.Item>
                         )}
                     />
@@ -309,27 +472,33 @@ const GroupManagementPage = () => {
 };
 
 // Componente para agregar miembros a un grupo
-const AddMemberForm = ({ groupId, onAddMember }) => {
-    const [username, setUsername] = useState('');
+const AddMemberForm = ({ groupId, onAddMember, users }) => {
+    const [selectedUser, setSelectedUser] = useState(null);
 
     const handleAdd = () => {
-        if (username) {
-            onAddMember(username);
-            setUsername('');
+        if (selectedUser) {
+            onAddMember(selectedUser);
+            setSelectedUser(null); // Limpiar la selección
         } else {
-            message.error('Por favor ingresa un nombre de usuario');
+            message.error('Por favor selecciona un usuario');
         }
     };
 
     return (
         <div style={{ marginTop: 20 }}>
             <h3>Agregar Miembro al Grupo</h3>
-            <Input
-                placeholder="Nombre de usuario"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                style={{ marginBottom: 10 }}
-            />
+            <Select
+                placeholder="Selecciona un usuario"
+                style={{ width: 200, marginBottom: 10 }}
+                value={selectedUser}
+                onChange={(value) => setSelectedUser(value)}
+            >
+                {users.map(user => (
+                    <Select.Option key={user.username} value={user.username}>
+                        {user.username}
+                    </Select.Option>
+                ))}
+            </Select>
             <Button onClick={handleAdd}>Agregar Miembro</Button>
         </div>
     );

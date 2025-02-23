@@ -55,10 +55,10 @@ const verifyToken = (req, res, next) => {
 
 
 app.post('/register', async (req, res) => {
-    const { username, password, gmail, rol } = req.body;
+    const { username, password, gmail } = req.body; // Eliminamos el campo 'rol' del body
     const last_login = new Date().toISOString(); 
 
-    if (!username || !password || !gmail || !rol) {
+    if (!username || !password || !gmail) {
         return res.status(400).json({ statusCode: 400, intMessage: 'Todos los campos son obligatorios' });
     }
 
@@ -79,7 +79,7 @@ app.post('/register', async (req, res) => {
             password: hashedPassword,
             gmail,
             last_login,
-            rol,
+            rol: 'worker', // Asignamos el rol 'worker' por defecto
             id: userRef.id 
         });
 
@@ -185,14 +185,12 @@ app.get('/all-tasks', async (req, res) => {
 });
 
 app.put('/tasks/update/:id', verifyToken, async (req, res) => {
+    const { id } = req.params;
+    const { category, description, name_task, status, time_until_finish, remind_me } = req.body;
+    const username = req.username; // Usuario que hace la solicitud
+
     try {
-        const { id } = req.params;
-        const { category, description, name_task, status, time_until_finish, remind_me } = req.body;
-
-        if (!category || !description || !name_task || !status || !time_until_finish || !remind_me) {
-            return res.status(400).json({ statusCode: 400, message: 'Todos los campos son obligatorios' });
-        }
-
+        // Obtener la tarea
         const taskRef = db.collection('task').doc(id);
         const taskDoc = await taskRef.get();
 
@@ -200,11 +198,18 @@ app.put('/tasks/update/:id', verifyToken, async (req, res) => {
             return res.status(404).json({ statusCode: 404, message: 'Tarea no encontrada' });
         }
 
-        // Verificar que la tarea pertenezca al usuario
-        if (taskDoc.data().username !== req.username) {
+        const task = taskDoc.data();
+
+        // Obtener el rol del usuario desde la base de datos
+        const userRef = db.collection('USERS').where('username', '==', username).get();
+        const user = (await userRef).docs[0].data();
+
+        // Verificar si el usuario es el creador de la tarea o un admin
+        if (task.created_by !== username && user.rol !== 'admin') {
             return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para editar esta tarea' });
         }
 
+        // Actualizar la tarea
         await taskRef.update({
             category,
             description,
@@ -212,11 +217,10 @@ app.put('/tasks/update/:id', verifyToken, async (req, res) => {
             status,
             time_until_finish,
             remind_me,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
 
         res.status(200).json({ statusCode: 200, message: 'Tarea actualizada con éxito' });
-
     } catch (err) {
         res.status(500).json({ statusCode: 500, message: 'Error al actualizar la tarea', error: err.message });
     }
@@ -256,7 +260,7 @@ app.post('/groups', verifyToken, async (req, res) => {
             return res.status(400).json({ statusCode: 400, message: 'Nombre y descripción son obligatorios' });
         }
 
-        // Verificar si el usuario tiene permiso para crear grupos (por ejemplo, si es admin)
+        // Verificar si el usuario tiene permiso para crear grupos (solo admin)
         const userRef = db.collection('USERS').where('username', '==', username).get();
         const user = (await userRef).docs[0].data();
 
@@ -297,16 +301,19 @@ app.post('/groups/:groupId/add-member', verifyToken, async (req, res) => {
 
         const group = groupDoc.data();
 
-        // Verificar si el usuario que hace la solicitud es el creador del grupo
-        if (group.created_by !== username) {
+        // Verificar si el usuario que hace la solicitud es el creador del grupo o un admin
+        const userRef = db.collection('USERS').where('username', '==', username).get();
+        const user = (await userRef).docs[0].data();
+
+        if (group.created_by !== username && user.rol !== 'admin') {
             return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para añadir miembros' });
         }
 
         // Verificar si el usuario a añadir existe
-        const userRef = db.collection('USERS').where('username', '==', usernameToAdd).get();
-        const user = (await userRef).docs[0];
+        const userToAddRef = db.collection('USERS').where('username', '==', usernameToAdd).get();
+        const userToAdd = (await userToAddRef).docs[0];
 
-        if (!user) {
+        if (!userToAdd) {
             return res.status(404).json({ statusCode: 404, message: 'Usuario no encontrado' });
         }
 
@@ -341,8 +348,11 @@ app.post('/groups/:groupId/tasks', verifyToken, async (req, res) => {
 
         const group = groupDoc.data();
 
-        // Verificar si el usuario que hace la solicitud es el creador del grupo
-        if (group.created_by !== username) {
+        // Verificar si el usuario tiene permiso para crear tareas (admin o managment_task)
+        const userRef = db.collection('USERS').where('username', '==', username).get();
+        const user = (await userRef).docs[0].data();
+
+        if (user.rol !== 'admin' && user.rol !== 'managment_task') {
             return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para crear tareas en este grupo' });
         }
 
@@ -500,8 +510,11 @@ app.delete('/groups/:groupId/delete', verifyToken, async (req, res) => {
 
         const group = groupDoc.data();
 
-        // Verificar si el usuario es el creador del grupo
-        if (group.created_by !== username) {
+        // Verificar si el usuario es el creador del grupo o un admin
+        const userRef = db.collection('USERS').where('username', '==', username).get();
+        const user = (await userRef).docs[0].data();
+
+        if (group.created_by !== username && user.rol !== 'admin') {
             return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para eliminar este grupo' });
         }
 
@@ -577,46 +590,66 @@ app.delete('/users/:userId/delete', verifyToken, async (req, res) => {
     }
 });
 
-app.put('/users/:userId/update-rol', verifyToken, async (req, res) => {
-    try {
-        const { userId } = req.params;
-        const { rol } = req.body;
-        const username = req.username;
+// Obtener el rol de un usuario
+app.get('/users/:userId/role', verifyToken, async (req, res) => {
+    const { userId } = req.params;
 
-        // Verificar si el usuario es admin
+    try {
+        // Obtener el usuario
+        const userRef = db.collection('USERS').doc(userId);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+            return res.status(404).json({ statusCode: 404, message: 'Usuario no encontrado' });
+        }
+
+        const user = userDoc.data();
+
+        // Obtener el rol del usuario
+        const roleRef = db.collection('ROLES').doc(user.roleId);
+        const roleDoc = await roleRef.get();
+
+        if (!roleDoc.exists) {
+            return res.status(404).json({ statusCode: 404, message: 'Rol no encontrado' });
+        }
+
+        const role = roleDoc.data();
+        res.status(200).json({ statusCode: 200, role });
+    } catch (err) {
+        res.status(500).json({ statusCode: 500, message: 'Error al obtener el rol del usuario', error: err.message });
+    }
+});
+
+// Asignar un rol a un usuario
+app.post('/users/:userId/assign-role', verifyToken, async (req, res) => {
+    const { userId } = req.params;
+    const { roleId } = req.body;
+    const username = req.username;
+
+    try {
+        // Verificar si el usuario que hace la solicitud es admin
         const userRef = db.collection('USERS').where('username', '==', username).get();
         const user = (await userRef).docs[0].data();
 
         if (user.rol !== 'admin') {
-            return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para actualizar roles' });
+            return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para asignar roles' });
         }
 
+        // Verificar si el rol existe
+        const roleRef = db.collection('ROLES').doc(roleId);
+        const roleDoc = await roleRef.get();
+
+        if (!roleDoc.exists) {
+            return res.status(404).json({ statusCode: 404, message: 'Rol no encontrado' });
+        }
+
+        // Asignar el rol al usuario
         const userToUpdateRef = db.collection('USERS').doc(userId);
-        const userToUpdateDoc = await userToUpdateRef.get();
+        await userToUpdateRef.update({ rol: roleId });
 
-        if (!userToUpdateDoc.exists) {
-            return res.status(404).json({ statusCode: 404, message: 'Usuario no encontrado' });
-        }
-
-        await userToUpdateRef.update({ rol });
-        res.status(200).json({ statusCode: 200, message: 'Rol del usuario actualizado con éxito' });
-
+        res.status(200).json({ statusCode: 200, message: 'Rol asignado con éxito' });
     } catch (err) {
-        res.status(500).json({ statusCode: 500, message: 'Error al actualizar el rol del usuario', error: err.message });
-    }
-});
-
-app.get('/user/rol', verifyToken, async (req, res) => {
-    try {
-        const username = req.username;
-
-        const userRef = db.collection('USERS').where('username', '==', username).get();
-        const user = (await userRef).docs[0].data();
-
-        res.status(200).json({ statusCode: 200, rol: user.rol });
-
-    } catch (err) {
-        res.status(500).json({ statusCode: 500, message: 'Error al obtener el rol del usuario', error: err.message });
+        res.status(500).json({ statusCode: 500, message: 'Error al asignar el rol', error: err.message });
     }
 });
 

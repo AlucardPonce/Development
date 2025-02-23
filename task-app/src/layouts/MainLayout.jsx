@@ -1,7 +1,7 @@
 import React from "react";
 import { Layout, Menu, Button } from "antd";
 import { Link, useNavigate } from "react-router-dom"; // Cambiar useHistory por useNavigate
-import { DashboardOutlined, UserOutlined, SettingOutlined, TeamOutlined, LogoutOutlined } from '@ant-design/icons';
+import { DashboardOutlined, UserOutlined, SettingOutlined, TeamOutlined, LogoutOutlined, UsergroupAddOutlined } from '@ant-design/icons';
 
 const { Sider, Content } = Layout;
 
@@ -36,7 +36,11 @@ const MainLayout = ({ children }) => {
           <Menu.Item key="4" icon={<TeamOutlined />}>
             <Link to="/group">Gestión de Grupos</Link>
           </Menu.Item>
-          <Menu.Item key="5" icon={<LogoutOutlined />} onClick={handleLogout}>
+          {/* Nueva opción para administrar usuarios */}
+          <Menu.Item key="5" icon={<UsergroupAddOutlined />}>
+            <Link to="/admin/users">Administrar Usuarios</Link>
+          </Menu.Item>
+          <Menu.Item key="6" icon={<LogoutOutlined />} onClick={handleLogout}>
             Cerrar Sesión
           </Menu.Item>
         </Menu>
