@@ -1,11 +1,18 @@
 import React from "react";
-import { Layout, Menu } from "antd";
-import { Link } from "react-router-dom";
-import { DashboardOutlined, UserOutlined, SettingOutlined } from '@ant-design/icons';
+import { Layout, Menu, Button } from "antd";
+import { Link, useNavigate } from "react-router-dom"; // Cambiar useHistory por useNavigate
+import { DashboardOutlined, UserOutlined, SettingOutlined, TeamOutlined, LogoutOutlined } from '@ant-design/icons';
 
 const { Sider, Content } = Layout;
 
 const MainLayout = ({ children }) => {
+  const navigate = useNavigate(); // Cambiar useHistory por useNavigate
+
+  const handleLogout = () => {
+    localStorage.removeItem('token'); // Elimina el token de localStorage
+    navigate('/login'); // Redirige a la página de inicio de sesión
+  };
+
   return (
     <Layout style={{ minHeight: "100vh" }}>
       <Sider
@@ -25,6 +32,12 @@ const MainLayout = ({ children }) => {
           </Menu.Item>
           <Menu.Item key="3" icon={<SettingOutlined />}>
             <Link to="/settings">Configuraciones</Link>
+          </Menu.Item>
+          <Menu.Item key="4" icon={<TeamOutlined />}>
+            <Link to="/group">Gestión de Grupos</Link>
+          </Menu.Item>
+          <Menu.Item key="5" icon={<LogoutOutlined />} onClick={handleLogout}>
+            Cerrar Sesión
           </Menu.Item>
         </Menu>
       </Sider>
