@@ -236,8 +236,13 @@ app.delete('/tasks/delete/:id', verifyToken, async (req, res) => {
             return res.status(404).json({ statusCode: 404, message: 'Tarea no encontrada' });
         }
 
-        // Verificar que la tarea pertenezca al usuario
-        if (taskDoc.data().username !== req.username) {
+        const task = taskDoc.data();
+
+        // Verificar si el usuario es el creador de la tarea o un admin
+        const userRef = db.collection('USERS').where('username', '==', req.username).get();
+        const user = (await userRef).docs[0].data();
+
+        if (task.username !== req.username && user.rol !== 'admin') {
             return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para eliminar esta tarea' });
         }
 
@@ -248,7 +253,6 @@ app.delete('/tasks/delete/:id', verifyToken, async (req, res) => {
         res.status(500).json({ statusCode: 500, message: 'Error al eliminar la tarea', error: err.message });
     }
 });
-
 // $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$   API PARA CREAR GRUPO $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
 app.post('/groups', verifyToken, async (req, res) => {
@@ -381,6 +385,26 @@ app.post('/groups/:groupId/tasks', verifyToken, async (req, res) => {
 
     } catch (err) {
         res.status(500).json({ statusCode: 500, message: 'Error al crear la tarea', error: err.message });
+    }
+});
+
+app.get('/groups', verifyToken, async (req, res) => {
+    try {
+        const username = req.username;
+
+        // Obtener todos los grupos donde el usuario es miembro
+        const groupsSnapshot = await db.collection('group')
+            .where('members', 'array-contains', username)
+            .get();
+
+        const groups = groupsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
+
+        res.status(200).json({ statusCode: 200, groups });
+    } catch (err) {
+        res.status(500).json({ statusCode: 500, message: 'Error al obtener los grupos', error: err.message });
     }
 });
 
@@ -624,19 +648,10 @@ app.get('/users/:userId/role', verifyToken, async (req, res) => {
 app.post('/users/:userId/assign-role', verifyToken, async (req, res) => {
     const { userId } = req.params;
     const { roleId } = req.body;
-    const username = req.username;
 
     try {
-        // Verificar si el usuario que hace la solicitud es admin
-        const userRef = db.collection('USERS').where('username', '==', username).get();
-        const user = (await userRef).docs[0].data();
-
-        if (user.rol !== 'admin') {
-            return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para asignar roles' });
-        }
-
-        // Verificar si el rol existe
-        const roleRef = db.collection('ROLES').doc(roleId);
+        // Verificar si el rol existe en la colección "Rol"
+        const roleRef = db.collection('Rol').doc(roleId); // Asegúrate de que la colección se llame "Rol"
         const roleDoc = await roleRef.get();
 
         if (!roleDoc.exists) {
@@ -644,8 +659,8 @@ app.post('/users/:userId/assign-role', verifyToken, async (req, res) => {
         }
 
         // Asignar el rol al usuario
-        const userToUpdateRef = db.collection('USERS').doc(userId);
-        await userToUpdateRef.update({ rol: roleId });
+        const userRef = db.collection('USERS').doc(userId);
+        await userRef.update({ rol: roleId }); // Asegúrate de que el campo sea "rol"
 
         res.status(200).json({ statusCode: 200, message: 'Rol asignado con éxito' });
     } catch (err) {

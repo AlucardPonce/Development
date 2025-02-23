@@ -115,7 +115,7 @@ const GroupManagementPage = () => {
     // Eliminar una tarea
     const onDeleteTask = async (taskId) => {
         try {
-            await axios.delete(`http://localhost:3000/tasks/delete/${taskId}`, {
+            await axios.delete(`http://localhost:3000/tasks/${taskId}/delete`, {
                 headers: {
                     Authorization: `Bearer ${userToken}`,
                 },

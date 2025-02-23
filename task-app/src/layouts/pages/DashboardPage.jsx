@@ -58,14 +58,14 @@ const TaskForm = ({ visible, onCreate, onCancel, taskData, groups }) => {
                     label="Tiempo hasta terminar"
                     rules={[{ required: true, message: "Por favor selecciona la fecha y hora" }]}
                 >
-                    <DatePicker showTime />
+                    <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" />
                 </Form.Item>
                 <Form.Item
                     name="remind_me"
                     label="Recordarme"
                     rules={[{ required: true, message: "Por favor selecciona la fecha y hora" }]}
                 >
-                    <DatePicker showTime />
+                    <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" />
                 </Form.Item>
                 <Form.Item
                     label="Estado"
@@ -124,21 +124,23 @@ const DashboardPage = () => {
     };
 
     const fetchGroups = async () => {
-        try {
-            const response = await axios.get("http://localhost:3000/groups", {
-                headers: { Authorization: `Bearer ${userToken}` },
-            });
-            if (response.data && Array.isArray(response.data.groups)) {
-                setGroups(response.data.groups);
-            } else {
-                console.error("Formato de datos incorrecto:", response.data);
-                message.error("Error al cargar los grupos");
-            }
-        } catch (error) {
-            console.error("Error al obtener grupos:", error);
-            message.error("Error al obtener grupos");
-        }
-    };
+      try {
+          const response = await axios.get("http://localhost:3000/groups", {
+              headers: { Authorization: `Bearer ${userToken}` },
+          });
+  
+          // Verifica que la respuesta tenga el formato esperado
+          if (response.data && Array.isArray(response.data.groups)) {
+              setGroups(response.data.groups);
+          } else {
+              console.error("Formato de datos incorrecto:", response.data);
+              message.error("Error al cargar los grupos");
+          }
+      } catch (error) {
+          console.error("Error al obtener grupos:", error);
+          message.error("Error al obtener grupos");
+      }
+  };
 
     const onCreateOrUpdate = async (values) => {
         try {

@@ -46,7 +46,7 @@ const UserManagementPage = () => {
         try {
             await axios.post(
                 `http://localhost:3000/users/${selectedUser.id}/assign-role`,
-                { roleId: values.role },
+                { roleId: values.role }, // Asegúrate de que values.role sea "worker", "managment_task" o "admin"
                 {
                     headers: {
                         Authorization: `Bearer ${userToken}`,
@@ -57,11 +57,10 @@ const UserManagementPage = () => {
             setVisible(false); // Cerrar el modal
             fetchUsers(); // Actualizar la lista de usuarios
         } catch (error) {
-            console.error('Error al asignar rol:', error);
+            console.error('Error al asignar rol:', error.response ? error.response.data : error.message);
             message.error('Error al asignar rol');
         }
     };
-
     // Abrir el modal para asignar rol
     const openAssignRoleModal = (user) => {
         setSelectedUser(user);
