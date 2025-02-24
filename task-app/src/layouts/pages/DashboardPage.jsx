@@ -7,6 +7,13 @@ import dayjs from "dayjs";
 
 const { TabPane } = Tabs;
 
+// Colores para los estados
+const statusColors = {
+    completado: "#52c41a", // Verde
+    "en progreso": "#1890ff", // Azul
+    pendiente: "#fa8c16", // Naranja
+};
+
 const TaskForm = ({ visible, onCreate, onCancel, taskData, groups, users }) => {
     const [form] = Form.useForm();
 
@@ -120,11 +127,11 @@ const TaskForm = ({ visible, onCreate, onCancel, taskData, groups, users }) => {
 
 const DashboardPage = () => {
     const [visible, setVisible] = useState(false);
-    const [myTasks, setMyTasks] = useState([]); // Tareas asignadas al usuario
-    const [groupTasks, setGroupTasks] = useState([]); // Tareas de los grupos
+    const [myTasks, setMyTasks] = useState([]);
+    const [groupTasks, setGroupTasks] = useState([]);
     const [groups, setGroups] = useState([]);
     const [users, setUsers] = useState([]);
-    const [editingTask, setEditingTask] = useState(null); // Estado para la tarea en edición
+    const [editingTask, setEditingTask] = useState(null);
     const userToken = localStorage.getItem("token");
     const userRole = localStorage.getItem("role");
     const username = localStorage.getItem("username");
@@ -135,7 +142,6 @@ const DashboardPage = () => {
             const response = await axios.get("http://localhost:3000/user/tasks", {
                 headers: { Authorization: `Bearer ${userToken}` },
             });
-            console.log("Tareas obtenidas:", response.data.tasks); // Verifica los datos obtenidos
             setMyTasks(response.data.tasks);
         } catch (error) {
             console.error("Error al obtener mis tareas:", error.response ? error.response.data : error.message);
@@ -219,30 +225,26 @@ const DashboardPage = () => {
     };
 
     // Cambiar el estado de una tarea
-  // Cambiar el estado de una tarea
-const onChangeStatus = async (taskId, newStatus) => {
-    try {
-        await axios.put(
-            `http://localhost:3000/tasks/${taskId}/update-status`, // Usa la nueva ruta de la API
-            { status: newStatus }, // Envía el nuevo estado en el cuerpo de la solicitud
-            {
-                headers: {
-                    Authorization: `Bearer ${userToken}`,
-                },
-            }
-        );
-        message.success('Estado de la tarea actualizado con éxito');
-        fetchMyTasks(); // Actualiza la lista de tareas del usuario
-        fetchGroupTasks(); // Actualiza la lista de tareas del grupo
-    } catch (error) {
-        console.error('Error al actualizar el estado:', error.response ? error.response.data : error.message);
-        message.error('Error al actualizar el estado');
-    }
-};
+    const onChangeStatus = async (taskId, newStatus) => {
+        try {
+            await axios.put(
+                `http://localhost:3000/tasks/${taskId}/update-status`,
+                { status: newStatus },
+                {
+                    headers: { Authorization: `Bearer ${userToken}` },
+                }
+            );
+            message.success("Estado de la tarea actualizado con éxito");
+            fetchMyTasks();
+            fetchGroupTasks();
+        } catch (error) {
+            console.error("Error al actualizar el estado:", error.response ? error.response.data : error.message);
+            message.error("Error al actualizar el estado");
+        }
+    };
 
     useEffect(() => {
         if (!userToken) {
-            // Redirigir al usuario a la página de inicio de sesión
             window.location.href = "/login";
             return;
         }
@@ -290,7 +292,11 @@ const onChangeStatus = async (taskId, newStatus) => {
                                         {tasks.map((task) => (
                                             <Card
                                                 key={task.id}
-                                                style={{ marginBottom: "10px" }}
+                                                style={{
+                                                    marginBottom: "10px",
+                                                    backgroundColor: statusColors[task.status], // Aplica el color según el estado
+                                                    color: "#fff", // Texto en blanco para mejor contraste
+                                                }}
                                                 actions={[
                                                     <Select
                                                         defaultValue={task.status}
@@ -312,7 +318,10 @@ const onChangeStatus = async (taskId, newStatus) => {
                                                     </Button>
                                                 ]}
                                             >
-                                                <Card.Meta title={task.name_task} description={task.description} />
+                                                <Card.Meta
+                                                    title={task.name_task}
+                                                    description={task.description}
+                                                />
                                             </Card>
                                         ))}
                                     </div>
@@ -327,8 +336,18 @@ const onChangeStatus = async (taskId, newStatus) => {
                                     <h3>{status}</h3>
                                     <div style={{ backgroundColor: "#f0f0f0", borderRadius: "8px", padding: "10px" }}>
                                         {tasks.map((task) => (
-                                            <Card key={task.id} style={{ marginBottom: "10px" }}>
-                                                <Card.Meta title={task.name_task} description={task.description} />
+                                            <Card
+                                                key={task.id}
+                                                style={{
+                                                    marginBottom: "10px",
+                                                    backgroundColor: statusColors[task.status], // Aplica el color según el estado
+                                                    color: "#fff", // Texto en blanco para mejor contraste
+                                                }}
+                                            >
+                                                <Card.Meta
+                                                    title={task.name_task}
+                                                    description={task.description}
+                                                />
                                             </Card>
                                         ))}
                                     </div>
