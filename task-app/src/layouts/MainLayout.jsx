@@ -1,6 +1,6 @@
 import React from "react";
 import { Layout, Menu, Button } from "antd";
-import { Link, useNavigate } from "react-router-dom"; // Cambiar useHistory por useNavigate
+import { Link, useNavigate } from "react-router-dom";
 import { DashboardOutlined, UserOutlined, SettingOutlined, TeamOutlined, LogoutOutlined, UsergroupAddOutlined } from '@ant-design/icons';
 
 const { Sider, Content } = Layout;

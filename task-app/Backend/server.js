@@ -186,11 +186,13 @@ app.get('/all-tasks', async (req, res) => {
 
 app.put('/tasks/update/:id', verifyToken, async (req, res) => {
     const { id } = req.params;
-    const { category, description, name_task, status, time_until_finish, remind_me } = req.body;
-    const username = req.username; // Usuario que hace la solicitud
+    const { category, description, name_task, status, time_until_finish, remind_me, assignedTo } = req.body;
+    const username = req.username; // Extraer username del objeto req
+
+    console.log('Datos recibidos:', req.body); // Depuración: Verifica los datos recibidos
+    console.log('Usuario que realiza la solicitud:', username); // Depuración: Verifica el username
 
     try {
-        // Obtener la tarea
         const taskRef = db.collection('task').doc(id);
         const taskDoc = await taskRef.get();
 
@@ -200,11 +202,16 @@ app.put('/tasks/update/:id', verifyToken, async (req, res) => {
 
         const task = taskDoc.data();
 
-        // Obtener el rol del usuario desde la base de datos
+        // Verificar permisos
         const userRef = db.collection('USERS').where('username', '==', username).get();
-        const user = (await userRef).docs[0].data();
+        const userSnapshot = await userRef;
 
-        // Verificar si el usuario es el creador de la tarea o un admin
+        if (userSnapshot.empty) {
+            return res.status(404).json({ statusCode: 404, message: 'Usuario no encontrado' });
+        }
+
+        const user = userSnapshot.docs[0].data();
+
         if (task.created_by !== username && user.rol !== 'admin') {
             return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para editar esta tarea' });
         }
@@ -217,15 +224,17 @@ app.put('/tasks/update/:id', verifyToken, async (req, res) => {
             status,
             time_until_finish,
             remind_me,
+            assignedTo, // Asegúrate de que este campo se actualice
             timestamp: new Date().toISOString(),
         });
 
         res.status(200).json({ statusCode: 200, message: 'Tarea actualizada con éxito' });
     } catch (err) {
+        console.error('Error al actualizar la tarea:', err); // Depuración: Verifica el error
         res.status(500).json({ statusCode: 500, message: 'Error al actualizar la tarea', error: err.message });
     }
 });
-
+        
 app.delete('/tasks/delete/:id', verifyToken, async (req, res) => {
     try {
         const { id } = req.params;
@@ -525,6 +534,7 @@ app.delete('/groups/:groupId/delete', verifyToken, async (req, res) => {
         const { groupId } = req.params;
         const username = req.username;
 
+        // Obtener el grupo
         const groupRef = db.collection('group').doc(groupId);
         const groupDoc = await groupRef.get();
 
@@ -534,14 +544,22 @@ app.delete('/groups/:groupId/delete', verifyToken, async (req, res) => {
 
         const group = groupDoc.data();
 
-        // Verificar si el usuario es el creador del grupo o un admin
+        // Obtener el usuario que realiza la solicitud
         const userRef = db.collection('USERS').where('username', '==', username).get();
-        const user = (await userRef).docs[0].data();
+        const userSnapshot = await userRef;
 
+        if (userSnapshot.empty) {
+            return res.status(404).json({ statusCode: 404, message: 'Usuario no encontrado' });
+        }
+
+        const user = userSnapshot.docs[0].data();
+
+        // Verificar si el usuario es el creador del grupo o un admin
         if (group.created_by !== username && user.rol !== 'admin') {
             return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para eliminar este grupo' });
         }
 
+        // Eliminar el grupo
         await groupRef.delete();
         res.status(200).json({ statusCode: 200, message: 'Grupo eliminado con éxito' });
 

@@ -95,6 +95,7 @@ const GroupManagementPage = () => {
                     ...values,
                     time_until_finish: values.time_until_finish,
                     remind_me: values.remind_me,
+                    assignedTo: values.assignedTo, // Asegúrate de incluir assignedTo
                 },
                 {
                     headers: {
@@ -102,7 +103,7 @@ const GroupManagementPage = () => {
                     },
                 }
             );
-
+    
             message.success('Tarea actualizada con éxito');
             fetchTasks(selectedGroupId); // Actualizar la lista de tareas
             setVisibleEditModal(false); // Cerrar el modal de edición
@@ -111,17 +112,19 @@ const GroupManagementPage = () => {
             message.error('Error al actualizar la tarea');
         }
     };
-
     // Eliminar una tarea
     const onDeleteTask = async (taskId) => {
         try {
-            await axios.delete(`http://localhost:3000/tasks/${taskId}/delete`, {
+            await axios.delete(`http://localhost:3000/tasks/delete/${taskId}`, {
                 headers: {
                     Authorization: `Bearer ${userToken}`,
                 },
             });
+    
+            // Actualizar el estado eliminando la tarea
+            setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+    
             message.success('Tarea eliminada con éxito');
-            fetchTasks(selectedGroupId); // Actualizar la lista de tareas
         } catch (error) {
             console.error('Error al eliminar la tarea:', error.response ? error.response.data : error.message);
             message.error('Error al eliminar la tarea');
@@ -132,7 +135,7 @@ const GroupManagementPage = () => {
     const onChangeStatus = async (taskId, newStatus) => {
         try {
             await axios.put(
-                `http://localhost:3000/tasks/update/${taskId}`,
+                `http://localhost:3000/tasks/${taskId}/update-status`,
                 { status: newStatus },
                 {
                     headers: {

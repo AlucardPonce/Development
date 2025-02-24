@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Select, message } from 'antd';
 import axios from 'axios';
 import MainLayout from '../../layouts/MainLayout';
+import api from "../utility/api";
 
 const UserManagementPage = () => {
     const [users, setUsers] = useState([]);
