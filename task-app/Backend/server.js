@@ -572,13 +572,32 @@ app.get('/user/tasks', verifyToken, async (req, res) => {
     try {
         const username = req.username;
 
+        // Consulta las tareas asignadas al usuario
         const tasksSnapshot = await db.collection('task').where('assignedTo', '==', username).get();
         const tasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         res.status(200).json({ statusCode: 200, tasks });
-
     } catch (err) {
         res.status(500).json({ statusCode: 500, message: 'Error al obtener las tareas del usuario', error: err.message });
+    }
+});
+
+app.put('/tasks/update1/:taskId', verifyToken, async (req, res) => {
+    try {
+        const taskId = req.params.taskId;
+        const { status } = req.body;
+
+        if (!status) {
+            return res.status(400).json({ statusCode: 400, message: 'El campo "status" es requerido' });
+        }
+
+        // Actualiza solo el campo "status" en Firestore
+        await db.collection('task').doc(taskId).update({ status });
+
+        res.status(200).json({ statusCode: 200, message: 'Estado de la tarea actualizado con éxito' });
+    } catch (err) {
+        console.error("Error al actualizar la tarea:", err);
+        res.status(500).json({ statusCode: 500, message: 'Error al actualizar la tarea', error: err.message });
     }
 });
 

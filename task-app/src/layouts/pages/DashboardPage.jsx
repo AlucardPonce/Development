@@ -75,10 +75,9 @@ const TaskForm = ({ visible, onCreate, onCancel, taskData, groups, users }) => {
                     rules={[{ required: true, message: "Por favor, seleccione un estado" }]}
                 >
                     <Select placeholder="Seleccione un estado">
-                        <Select.Option value="In Progress">En Progreso</Select.Option>
-                        <Select.Option value="Done">Hecho</Select.Option>
-                        <Select.Option value="Paused">Pausado</Select.Option>
-                        <Select.Option value="Revision">Revisión</Select.Option>
+                        <Select.Option value="pendiente">Pendiente</Select.Option>
+                        <Select.Option value="en progreso">En Progreso</Select.Option>
+                        <Select.Option value="completado">Completado</Select.Option>
                     </Select>
                 </Form.Item>
                 <Form.Item
@@ -136,6 +135,7 @@ const DashboardPage = () => {
             const response = await axios.get("http://localhost:3000/user/tasks", {
                 headers: { Authorization: `Bearer ${userToken}` },
             });
+            console.log("Tareas obtenidas:", response.data.tasks); // Verifica los datos obtenidos
             setMyTasks(response.data.tasks);
         } catch (error) {
             console.error("Error al obtener mis tareas:", error.response ? error.response.data : error.message);
@@ -219,23 +219,26 @@ const DashboardPage = () => {
     };
 
     // Cambiar el estado de una tarea
-    const onChangeStatus = async (taskId, newStatus) => {
-        try {
-            await axios.put(
-                `http://localhost:3000/tasks/update/${taskId}`,
-                { status: newStatus },
-                {
-                    headers: { Authorization: `Bearer ${userToken}` },
-                }
-            );
-            message.success("Estado de la tarea actualizado con éxito");
-            fetchMyTasks();
-            fetchGroupTasks();
-        } catch (error) {
-            console.error("Error al actualizar el estado:", error.response ? error.response.data : error.message);
-            message.error("Error al actualizar el estado");
-        }
-    };
+  // Cambiar el estado de una tarea
+const onChangeStatus = async (taskId, newStatus) => {
+    try {
+        await axios.put(
+            `http://localhost:3000/tasks/${taskId}/update-status`, // Usa la nueva ruta de la API
+            { status: newStatus }, // Envía el nuevo estado en el cuerpo de la solicitud
+            {
+                headers: {
+                    Authorization: `Bearer ${userToken}`,
+                },
+            }
+        );
+        message.success('Estado de la tarea actualizado con éxito');
+        fetchMyTasks(); // Actualiza la lista de tareas del usuario
+        fetchGroupTasks(); // Actualiza la lista de tareas del grupo
+    } catch (error) {
+        console.error('Error al actualizar el estado:', error.response ? error.response.data : error.message);
+        message.error('Error al actualizar el estado');
+    }
+};
 
     useEffect(() => {
         if (!userToken) {
@@ -252,10 +255,9 @@ const DashboardPage = () => {
     // Organizar tareas por estado
     const organizeTasksByStatus = (tasks) => {
         return {
-            "In Progress": tasks.filter((task) => task.status === "In Progress"),
-            "Done": tasks.filter((task) => task.status === "Done"),
-            "Paused": tasks.filter((task) => task.status === "Paused"),
-            "Revision": tasks.filter((task) => task.status === "Revision"),
+            "pendiente": tasks.filter((task) => task.status === "pendiente"),
+            "en progreso": tasks.filter((task) => task.status === "en progreso"),
+            "completado": tasks.filter((task) => task.status === "completado"),
         };
     };
 
@@ -295,10 +297,9 @@ const DashboardPage = () => {
                                                         style={{ width: "100%" }}
                                                         onChange={(value) => onChangeStatus(task.id, value)}
                                                     >
-                                                        <Select.Option value="In Progress">En Progreso</Select.Option>
-                                                        <Select.Option value="Done">Hecho</Select.Option>
-                                                        <Select.Option value="Paused">Pausado</Select.Option>
-                                                        <Select.Option value="Revision">Revisión</Select.Option>
+                                                        <Select.Option value="pendiente">Pendiente</Select.Option>
+                                                        <Select.Option value="en progreso">En Progreso</Select.Option>
+                                                        <Select.Option value="completado">Completado</Select.Option>
                                                     </Select>,
                                                     <Button
                                                         type="link"
