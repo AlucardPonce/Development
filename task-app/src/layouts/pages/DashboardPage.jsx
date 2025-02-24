@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Form, Input, DatePicker, Button, message, Select } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Modal, Form, Input, DatePicker, Button, message, Select, Tabs, Card } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import MainLayout from "../../layouts/MainLayout";
-import api from "../utility/api";
 import axios from "axios";
 import dayjs from "dayjs";
 
-const TaskForm = ({ visible, onCreate, onCancel, taskData, groups }) => {
+const { TabPane } = Tabs;
+
+const TaskForm = ({ visible, onCreate, onCancel, taskData, groups, users }) => {
     const [form] = Form.useForm();
 
     useEffect(() => {
@@ -100,6 +101,19 @@ const TaskForm = ({ visible, onCreate, onCancel, taskData, groups }) => {
                         ))}
                     </Select>
                 </Form.Item>
+                <Form.Item
+                    name="assignedTo"
+                    label="Asignar a"
+                    rules={[{ required: true, message: "Por favor selecciona un usuario" }]}
+                >
+                    <Select placeholder="Seleccione un usuario">
+                        {users.map((user) => (
+                            <Select.Option key={user.username} value={user.username}>
+                                {user.username}
+                            </Select.Option>
+                        ))}
+                    </Select>
+                </Form.Item>
             </Form>
         </Modal>
     );
@@ -107,42 +121,77 @@ const TaskForm = ({ visible, onCreate, onCancel, taskData, groups }) => {
 
 const DashboardPage = () => {
     const [visible, setVisible] = useState(false);
-    const [tasks, setTasks] = useState([]);
-    const [editingTask, setEditingTask] = useState(null);
+    const [myTasks, setMyTasks] = useState([]); // Tareas asignadas al usuario
+    const [groupTasks, setGroupTasks] = useState([]); // Tareas de los grupos
     const [groups, setGroups] = useState([]);
+    const [users, setUsers] = useState([]);
+    const [editingTask, setEditingTask] = useState(null); // Estado para la tarea en edición
     const userToken = localStorage.getItem("token");
+    const userRole = localStorage.getItem("role");
+    const username = localStorage.getItem("username");
 
-    const fetchTasks = async () => {
+    // Obtener las tareas asignadas al usuario
+    const fetchMyTasks = async () => {
         try {
-            const response = await axios.get("http://localhost:3000/tasks", {
+            const response = await axios.get("http://localhost:3000/user/tasks", {
                 headers: { Authorization: `Bearer ${userToken}` },
             });
-            setTasks(response.data.tasks);
+            setMyTasks(response.data.tasks);
         } catch (error) {
-            console.error("Error al obtener tareas:", error);
-            message.error("Error al obtener tareas");
+            console.error("Error al obtener mis tareas:", error.response ? error.response.data : error.message);
+            message.error("Error al obtener mis tareas");
         }
     };
 
+    // Obtener los grupos del usuario
     const fetchGroups = async () => {
-      try {
-          const response = await axios.get("http://localhost:3000/groups", {
-              headers: { Authorization: `Bearer ${userToken}` },
-          });
-  
-          // Verifica que la respuesta tenga el formato esperado
-          if (response.data && Array.isArray(response.data.groups)) {
-              setGroups(response.data.groups);
-          } else {
-              console.error("Formato de datos incorrecto:", response.data);
-              message.error("Error al cargar los grupos");
-          }
-      } catch (error) {
-          console.error("Error al obtener grupos:", error);
-          message.error("Error al obtener grupos");
-      }
-  };
+        try {
+            const response = await axios.get("http://localhost:3000/user/groups", {
+                headers: { Authorization: `Bearer ${userToken}` },
+            });
+            setGroups(response.data.groups);
+        } catch (error) {
+            console.error("Error al obtener grupos:", error.response ? error.response.data : error.message);
+            message.error("Error al obtener grupos");
+        }
+    };
 
+    // Obtener las tareas de los grupos
+    const fetchGroupTasks = async () => {
+        try {
+            const response = await axios.get("http://localhost:3000/user/groups", {
+                headers: { Authorization: `Bearer ${userToken}` },
+            });
+            const groups = response.data.groups;
+
+            const allTasks = await Promise.all(groups.map(async (group) => {
+                const tasksResponse = await axios.get(`http://localhost:3000/groups/${group.id}/tasks`, {
+                    headers: { Authorization: `Bearer ${userToken}` },
+                });
+                return tasksResponse.data.tasks;
+            }));
+
+            setGroupTasks(allTasks.flat());
+        } catch (error) {
+            console.error("Error al obtener tareas de los grupos:", error.response ? error.response.data : error.message);
+            message.error("Error al obtener tareas de los grupos");
+        }
+    };
+
+    // Obtener todos los usuarios
+    const fetchUsers = async () => {
+        try {
+            const response = await axios.get("http://localhost:3000/users", {
+                headers: { Authorization: `Bearer ${userToken}` },
+            });
+            setUsers(response.data.users);
+        } catch (error) {
+            console.error("Error al obtener usuarios:", error.response ? error.response.data : error.message);
+            message.error("Error al obtener usuarios");
+        }
+    };
+
+    // Crear o actualizar una tarea
     const onCreateOrUpdate = async (values) => {
         try {
             const isEdit = Boolean(values.id);
@@ -161,114 +210,142 @@ const DashboardPage = () => {
             message.success(isEdit ? "Tarea actualizada con éxito" : "Tarea creada con éxito");
             setVisible(false);
             setEditingTask(null);
-            fetchTasks();
+            fetchMyTasks();
+            fetchGroupTasks();
         } catch (error) {
-            console.error("Error en la operación:", error);
+            console.error("Error en la operación:", error.response ? error.response.data : error.message);
             message.error("Error al procesar la tarea");
         }
     };
 
-    const onEdit = (task) => {
-        setEditingTask(task);
-        setVisible(true);
-    };
-
-    const onDelete = async (id) => {
-        if (!id) {
-            message.error("ID de tarea no válido");
-            return;
-        }
-
+    // Cambiar el estado de una tarea
+    const onChangeStatus = async (taskId, newStatus) => {
         try {
-            await axios.delete(`http://localhost:3000/tasks/delete/${id}`, {
-                headers: { Authorization: `Bearer ${userToken}` },
-            });
-
-            message.success("Tarea eliminada con éxito");
-            fetchTasks();
+            await axios.put(
+                `http://localhost:3000/tasks/update/${taskId}`,
+                { status: newStatus },
+                {
+                    headers: { Authorization: `Bearer ${userToken}` },
+                }
+            );
+            message.success("Estado de la tarea actualizado con éxito");
+            fetchMyTasks();
+            fetchGroupTasks();
         } catch (error) {
-            console.error("Error al eliminar la tarea:", error);
-            message.error("Error al eliminar la tarea");
+            console.error("Error al actualizar el estado:", error.response ? error.response.data : error.message);
+            message.error("Error al actualizar el estado");
         }
     };
 
     useEffect(() => {
-        if (userToken) {
-            fetchTasks();
-            fetchGroups();
+        if (!userToken) {
+            // Redirigir al usuario a la página de inicio de sesión
+            window.location.href = "/login";
+            return;
         }
+        fetchMyTasks();
+        fetchGroups();
+        fetchGroupTasks();
+        fetchUsers();
     }, [userToken]);
+
+    // Organizar tareas por estado
+    const organizeTasksByStatus = (tasks) => {
+        return {
+            "In Progress": tasks.filter((task) => task.status === "In Progress"),
+            "Done": tasks.filter((task) => task.status === "Done"),
+            "Paused": tasks.filter((task) => task.status === "Paused"),
+            "Revision": tasks.filter((task) => task.status === "Revision"),
+        };
+    };
+
+    const myTasksByStatus = organizeTasksByStatus(myTasks);
+    const groupTasksByStatus = organizeTasksByStatus(groupTasks);
 
     return (
         <MainLayout>
             <div style={{ padding: "20px" }}>
                 <h2 style={{ textAlign: "justify", marginBottom: "20px" }}>Tareas</h2>
-                <Button
-                    type="primary"
-                    shape="circle"
-                    icon={<PlusOutlined />}
-                    onClick={() => {
-                        setEditingTask(null);
-                        setVisible(true);
-                    }}
-                    style={{ position: "fixed", bottom: 20, right: 20 }}
-                />
-                <div
-                    style={{
-                        marginTop: "40px",
-                        backgroundColor: "#fff",
-                        borderRadius: "8px",
-                        padding: "20px",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                    }}
-                >
-                    {tasks.length > 0 ? (
-                        tasks.map((task) => (
-                            <div
-                                key={task.id}
-                                style={{
-                                    border: "1px solid #d9d9d9",
-                                    borderRadius: "4px",
-                                    padding: "15px",
-                                    margin: "10px 0",
-                                    backgroundColor: "#f9f9f9",
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                }}
-                            >
-                                <div>
-                                    <h4 style={{ margin: "0 0 10px" }}>{task.name_task}</h4>
-                                    <p style={{ margin: "5px 0" }}>
-                                        Estado: <strong>{task.status}</strong>
-                                    </p>
+                {userRole === "management_task" && (
+                    <Button
+                        type="primary"
+                        shape="circle"
+                        icon={<PlusOutlined />}
+                        onClick={() => {
+                            setEditingTask(null);
+                            setVisible(true);
+                        }}
+                        style={{ position: "fixed", bottom: 20, right: 20 }}
+                    />
+                )}
+                <Tabs defaultActiveKey="1">
+                    <TabPane tab="Mis Tareas" key="1">
+                        <div style={{ display: "flex", gap: "20px", overflowX: "auto" }}>
+                            {Object.entries(myTasksByStatus).map(([status, tasks]) => (
+                                <div key={status} style={{ flex: 1, minWidth: "250px" }}>
+                                    <h3>{status}</h3>
+                                    <div style={{ backgroundColor: "#f0f0f0", borderRadius: "8px", padding: "10px" }}>
+                                        {tasks.map((task) => (
+                                            <Card
+                                                key={task.id}
+                                                style={{ marginBottom: "10px" }}
+                                                actions={[
+                                                    <Select
+                                                        defaultValue={task.status}
+                                                        style={{ width: "100%" }}
+                                                        onChange={(value) => onChangeStatus(task.id, value)}
+                                                    >
+                                                        <Select.Option value="In Progress">En Progreso</Select.Option>
+                                                        <Select.Option value="Done">Hecho</Select.Option>
+                                                        <Select.Option value="Paused">Pausado</Select.Option>
+                                                        <Select.Option value="Revision">Revisión</Select.Option>
+                                                    </Select>,
+                                                    <Button
+                                                        type="link"
+                                                        onClick={() => {
+                                                            setEditingTask(task);
+                                                            setVisible(true);
+                                                        }}
+                                                    >
+                                                        Editar
+                                                    </Button>
+                                                ]}
+                                            >
+                                                <Card.Meta title={task.name_task} description={task.description} />
+                                            </Card>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div>
-                                    <Button
-                                        icon={<EditOutlined />}
-                                        onClick={() => onEdit(task)}
-                                        aria-label="Editar tarea"
-                                        style={{ marginRight: "8px" }}
-                                    />
-                                    <Button
-                                        icon={<DeleteOutlined />}
-                                        onClick={() => onDelete(task.id)}
-                                        danger
-                                        aria-label="Eliminar tarea"
-                                    />
+                            ))}
+                        </div>
+                    </TabPane>
+                    <TabPane tab="Tareas del Grupo" key="2">
+                        <div style={{ display: "flex", gap: "20px", overflowX: "auto" }}>
+                            {Object.entries(groupTasksByStatus).map(([status, tasks]) => (
+                                <div key={status} style={{ flex: 1, minWidth: "250px" }}>
+                                    <h3>{status}</h3>
+                                    <div style={{ backgroundColor: "#f0f0f0", borderRadius: "8px", padding: "10px" }}>
+                                        {tasks.map((task) => (
+                                            <Card key={task.id} style={{ marginBottom: "10px" }}>
+                                                <Card.Meta title={task.name_task} description={task.description} />
+                                            </Card>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        ))
-                    ) : (
-                        <p>No hay tareas disponibles.</p>
-                    )}
-                </div>
+                            ))}
+                        </div>
+                    </TabPane>
+                </Tabs>
                 <TaskForm
                     visible={visible}
                     onCreate={onCreateOrUpdate}
-                    onCancel={() => setVisible(false)}
+                    onCancel={() => {
+                        setVisible(false);
+                        setEditingTask(null);
+                    }}
                     taskData={editingTask}
                     groups={groups}
+                    users={users}
                 />
             </div>
         </MainLayout>

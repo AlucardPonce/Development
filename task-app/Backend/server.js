@@ -604,6 +604,7 @@ app.get('/users', verifyToken, async (req, res) => {
     }
 });
 
+
 app.delete('/users/:userId/delete', verifyToken, async (req, res) => {
     try {
         const { userId } = req.params;
