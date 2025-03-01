@@ -7,11 +7,10 @@ import dayjs from "dayjs";
 
 const { TabPane } = Tabs;
 
-// Colores para los estados
 const statusColors = {
-    completado: "#52c41a", // Verde
-    "en progreso": "#1890ff", // Azul
-    pendiente: "#fa8c16", // Naranja
+    completado: "#52c41a",
+    "en progreso": "#1890ff", 
+    pendiente: "#fa8c16",
 };
 
 const TaskForm = ({ visible, onCreate, onCancel, taskData, groups, users }) => {
@@ -136,7 +135,6 @@ const DashboardPage = () => {
     const userRole = localStorage.getItem("role");
     const username = localStorage.getItem("username");
 
-    // Obtener las tareas asignadas al usuario
     const fetchMyTasks = async () => {
         try {
             const response = await axios.get("http://localhost:3000/user/tasks", {
@@ -294,8 +292,8 @@ const DashboardPage = () => {
                                                 key={task.id}
                                                 style={{
                                                     marginBottom: "10px",
-                                                    backgroundColor: statusColors[task.status], // Aplica el color según el estado
-                                                    color: "#fff", // Texto en blanco para mejor contraste
+                                                    backgroundColor: statusColors[task.status],
+                                                    color: "#fff", 
                                                 }}
                                                 actions={[
                                                     <Select
