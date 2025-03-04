@@ -263,7 +263,6 @@ app.delete('/tasks/delete/:id', verifyToken, async (req, res) => {
     }
 });
 // $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$   API PARA CREAR GRUPO $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
 app.post('/groups', verifyToken, async (req, res) => {
     try {
         const { name, description } = req.body;
@@ -273,7 +272,6 @@ app.post('/groups', verifyToken, async (req, res) => {
             return res.status(400).json({ statusCode: 400, message: 'Nombre y descripción son obligatorios' });
         }
 
-        // Verificar si el usuario tiene permiso para crear grupos (solo admin)
         const userRef = db.collection('USERS').where('username', '==', username).get();
         const user = (await userRef).docs[0].data();
 
@@ -288,7 +286,7 @@ app.post('/groups', verifyToken, async (req, res) => {
             description,
             created_by: username,
             created_at: new Date().toISOString(),
-            members: [username] // El creador es automáticamente miembro del grupo
+            members: [username]
         };
 
         await groupRef.set(newGroup);
@@ -314,7 +312,6 @@ app.post('/groups/:groupId/add-member', verifyToken, async (req, res) => {
 
         const group = groupDoc.data();
 
-        // Verificar si el usuario que hace la solicitud es el creador del grupo o un admin
         const userRef = db.collection('USERS').where('username', '==', username).get();
         const user = (await userRef).docs[0].data();
 
@@ -322,7 +319,6 @@ app.post('/groups/:groupId/add-member', verifyToken, async (req, res) => {
             return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para añadir miembros' });
         }
 
-        // Verificar si el usuario a añadir existe
         const userToAddRef = db.collection('USERS').where('username', '==', usernameToAdd).get();
         const userToAdd = (await userToAddRef).docs[0];
 
@@ -330,7 +326,6 @@ app.post('/groups/:groupId/add-member', verifyToken, async (req, res) => {
             return res.status(404).json({ statusCode: 404, message: 'Usuario no encontrado' });
         }
 
-        // Añadir el usuario al grupo
         await groupRef.update({
             members: admin.firestore.FieldValue.arrayUnion(usernameToAdd)
         });
@@ -361,7 +356,6 @@ app.post('/groups/:groupId/tasks', verifyToken, async (req, res) => {
 
         const group = groupDoc.data();
 
-        // Verificar si el usuario tiene permiso para crear tareas (admin o managment_task)
         const userRef = db.collection('USERS').where('username', '==', username).get();
         const user = (await userRef).docs[0].data();
 
@@ -369,7 +363,6 @@ app.post('/groups/:groupId/tasks', verifyToken, async (req, res) => {
             return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para crear tareas en este grupo' });
         }
 
-        // Verificar si el usuario asignado es miembro del grupo
         if (!group.members.includes(assignedTo)) {
             return res.status(400).json({ statusCode: 400, message: 'El usuario asignado no es miembro del grupo' });
         }
@@ -401,7 +394,6 @@ app.get('/groups', verifyToken, async (req, res) => {
     try {
         const username = req.username;
 
-        // Obtener todos los grupos donde el usuario es miembro
         const groupsSnapshot = await db.collection('group')
             .where('members', 'array-contains', username)
             .get();
@@ -431,7 +423,6 @@ app.get('/groups/:groupId/tasks', verifyToken, async (req, res) => {
 
         const group = groupDoc.data();
 
-        // Verificar si el usuario es miembro del grupo
         if (!group.members.includes(username)) {
             return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para ver las tareas de este grupo' });
         }
@@ -465,7 +456,6 @@ app.put('/tasks/:taskId/update-status', verifyToken, async (req, res) => {
 
         const task = taskDoc.data();
 
-        // Verificar si el usuario es el asignado a la tarea
         if (task.assignedTo !== username) {
             return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para actualizar esta tarea' });
         }
@@ -493,7 +483,6 @@ app.delete('/tasks/:taskId/delete', verifyToken, async (req, res) => {
 
         const task = taskDoc.data();
 
-        // Verificar si el usuario es el creador del grupo
         const groupRef = db.collection('group').doc(task.groupId);
         const groupDoc = await groupRef.get();
 
@@ -534,7 +523,6 @@ app.delete('/groups/:groupId/delete', verifyToken, async (req, res) => {
         const { groupId } = req.params;
         const username = req.username;
 
-        // Obtener el grupo
         const groupRef = db.collection('group').doc(groupId);
         const groupDoc = await groupRef.get();
 
@@ -544,7 +532,6 @@ app.delete('/groups/:groupId/delete', verifyToken, async (req, res) => {
 
         const group = groupDoc.data();
 
-        // Obtener el usuario que realiza la solicitud
         const userRef = db.collection('USERS').where('username', '==', username).get();
         const userSnapshot = await userRef;
 
@@ -554,12 +541,10 @@ app.delete('/groups/:groupId/delete', verifyToken, async (req, res) => {
 
         const user = userSnapshot.docs[0].data();
 
-        // Verificar si el usuario es el creador del grupo o un admin
         if (group.created_by !== username && user.rol !== 'admin') {
             return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para eliminar este grupo' });
         }
 
-        // Eliminar el grupo
         await groupRef.delete();
         res.status(200).json({ statusCode: 200, message: 'Grupo eliminado con éxito' });
 
@@ -572,7 +557,6 @@ app.get('/user/tasks', verifyToken, async (req, res) => {
     try {
         const username = req.username;
 
-        // Consulta las tareas asignadas al usuario
         const tasksSnapshot = await db.collection('task').where('assignedTo', '==', username).get();
         const tasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
@@ -591,7 +575,6 @@ app.put('/tasks/update1/:taskId', verifyToken, async (req, res) => {
             return res.status(400).json({ statusCode: 400, message: 'El campo "status" es requerido' });
         }
 
-        // Actualiza solo el campo "status" en Firestore
         await db.collection('task').doc(taskId).update({ status });
 
         res.status(200).json({ statusCode: 200, message: 'Estado de la tarea actualizado con éxito' });
@@ -605,7 +588,6 @@ app.get('/users', verifyToken, async (req, res) => {
     try {
         const username = req.username;
 
-        // Verificar si el usuario es admin
         const userRef = db.collection('USERS').where('username', '==', username).get();
         const user = (await userRef).docs[0].data();
 
@@ -629,7 +611,6 @@ app.delete('/users/:userId/delete', verifyToken, async (req, res) => {
         const { userId } = req.params;
         const username = req.username;
 
-        // Verificar si el usuario es admin
         const userRef = db.collection('USERS').where('username', '==', username).get();
         const user = (await userRef).docs[0].data();
 
@@ -652,12 +633,10 @@ app.delete('/users/:userId/delete', verifyToken, async (req, res) => {
     }
 });
 
-// Obtener el rol de un usuario
 app.get('/users/:userId/role', verifyToken, async (req, res) => {
     const { userId } = req.params;
 
     try {
-        // Obtener el usuario
         const userRef = db.collection('USERS').doc(userId);
         const userDoc = await userRef.get();
 
@@ -667,7 +646,6 @@ app.get('/users/:userId/role', verifyToken, async (req, res) => {
 
         const user = userDoc.data();
 
-        // Obtener el rol del usuario
         const roleRef = db.collection('ROLES').doc(user.roleId);
         const roleDoc = await roleRef.get();
 
@@ -682,23 +660,21 @@ app.get('/users/:userId/role', verifyToken, async (req, res) => {
     }
 });
 
-// Asignar un rol a un usuario
 app.post('/users/:userId/assign-role', verifyToken, async (req, res) => {
     const { userId } = req.params;
     const { roleId } = req.body;
 
     try {
-        // Verificar si el rol existe en la colección "Rol"
-        const roleRef = db.collection('Rol').doc(roleId); // Asegúrate de que la colección se llame "Rol"
+
+        const roleRef = db.collection('Rol').doc(roleId);
         const roleDoc = await roleRef.get();
 
         if (!roleDoc.exists) {
             return res.status(404).json({ statusCode: 404, message: 'Rol no encontrado' });
         }
 
-        // Asignar el rol al usuario
         const userRef = db.collection('USERS').doc(userId);
-        await userRef.update({ rol: roleId }); // Asegúrate de que el campo sea "rol"
+        await userRef.update({ rol: roleId });
 
         res.status(200).json({ statusCode: 200, message: 'Rol asignado con éxito' });
     } catch (err) {
@@ -734,7 +710,6 @@ app.get('/groups/:groupId/tasks-history', verifyToken, async (req, res) => {
 
         const group = groupDoc.data();
 
-        // Verificar si el usuario es miembro del grupo
         if (!group.members.includes(username)) {
             return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para ver el historial de tareas de este grupo' });
         }
@@ -763,7 +738,6 @@ app.get('/groups/:groupId/user/tasks-history', verifyToken, async (req, res) => 
 
         const group = groupDoc.data();
 
-        // Verificar si el usuario es miembro del grupo
         if (!group.members.includes(username)) {
             return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para ver el historial de tareas de este grupo' });
         }
@@ -792,7 +766,6 @@ app.get('/groups/:groupId/all-users/tasks-history', verifyToken, async (req, res
 
         const group = groupDoc.data();
 
-        // Verificar si el usuario es el creador del grupo
         if (group.created_by !== username) {
             return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para ver el historial de tareas de todos los usuarios en este grupo' });
         }
