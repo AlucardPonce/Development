@@ -17,8 +17,7 @@ const App = () => {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/group" element={<GroupManagementPage />} />
-        {/* Nueva ruta para la administración de usuarios */}
-        <Route path="/admin/users" element={<UserManagementPage />} />
+        <Route path="/users" element={<UserManagementPage />} />
       </Routes>
     </Router>
   );

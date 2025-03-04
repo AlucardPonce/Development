@@ -36,7 +36,6 @@ const MainLayout = ({ children }) => {
           <Menu.Item key="4" icon={<TeamOutlined />}>
             <Link to="/group">Gestión de Grupos</Link>
           </Menu.Item>
-          {/* Nueva opción para administrar usuarios */}
           <Menu.Item key="5" icon={<UsergroupAddOutlined />}>
             <Link to="/users">Administrar Usuarios</Link>
           </Menu.Item>
