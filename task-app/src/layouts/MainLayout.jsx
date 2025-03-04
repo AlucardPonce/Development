@@ -6,11 +6,11 @@ import { DashboardOutlined, UserOutlined, SettingOutlined, TeamOutlined, LogoutO
 const { Sider, Content } = Layout;
 
 const MainLayout = ({ children }) => {
-  const navigate = useNavigate(); // Cambiar useHistory por useNavigate
+  const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem('token'); // Elimina el token de localStorage
-    navigate('/login'); // Redirige a la página de inicio de sesión
+    localStorage.removeItem('token'); 
+    navigate('/login'); 
   };
 
   return (
@@ -38,7 +38,7 @@ const MainLayout = ({ children }) => {
           </Menu.Item>
           {/* Nueva opción para administrar usuarios */}
           <Menu.Item key="5" icon={<UsergroupAddOutlined />}>
-            <Link to="/admin/users">Administrar Usuarios</Link>
+            <Link to="/users">Administrar Usuarios</Link>
           </Menu.Item>
           <Menu.Item key="6" icon={<LogoutOutlined />} onClick={handleLogout}>
             Cerrar Sesión

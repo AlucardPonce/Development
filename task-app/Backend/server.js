@@ -55,7 +55,7 @@ const verifyToken = (req, res, next) => {
 
 
 app.post('/register', async (req, res) => {
-    const { username, password, gmail } = req.body; // Eliminamos el campo 'rol' del body
+    const { username, password, gmail } = req.body; 
     const last_login = new Date().toISOString(); 
 
     if (!username || !password || !gmail) {
