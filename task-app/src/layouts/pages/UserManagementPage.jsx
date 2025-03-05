@@ -14,7 +14,7 @@ const UserManagementPage = () => {
     // Obtener la lista de usuarios
     const fetchUsers = async () => {
         try {
-            const response = await axios.get('http://localhost:3000/users', {
+            const response = await axios.get('https://development-iyl1.onrender.com/users', {
                 headers: {
                     Authorization: `Bearer ${userToken}`,
                 },
@@ -29,7 +29,7 @@ const UserManagementPage = () => {
     // Eliminar un usuario
     const handleDeleteUser = async (userId) => {
         try {
-            await axios.delete(`http://localhost:3000/users/${userId}/delete`, {
+            await axios.delete(`https://development-iyl1.onrender.com/users/${userId}/delete`, {
                 headers: {
                     Authorization: `Bearer ${userToken}`,
                 },
@@ -46,7 +46,7 @@ const UserManagementPage = () => {
     const handleAssignRole = async (values) => {
         try {
             await axios.post(
-                `http://localhost:3000/users/${selectedUser.id}/assign-role`,
+                `https://development-iyl1.onrender.com/users/${selectedUser.id}/assign-role`,
                 { roleId: values.role }, // Asegúrate de que values.role sea "worker", "managment_task" o "admin"
                 {
                     headers: {

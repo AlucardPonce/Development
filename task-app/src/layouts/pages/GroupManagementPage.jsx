@@ -18,7 +18,7 @@ const GroupManagementPage = () => {
     // Obtener la lista de grupos
     const fetchGroups = async () => {
         try {
-            const response = await axios.get('http://localhost:3000/user/groups', {
+            const response = await axios.get('https://development-iyl1.onrender.com/user/groups', {
                 headers: {
                     Authorization: `Bearer ${userToken}`,
                 },
@@ -32,7 +32,7 @@ const GroupManagementPage = () => {
     // Obtener la lista de tareas de un grupo
     const fetchTasks = async (groupId) => {
         try {
-            const response = await axios.get(`http://localhost:3000/groups/${groupId}/tasks`, {
+            const response = await axios.get(`https://development-iyl1.onrender.com/groups/${groupId}/tasks`, {
                 headers: {
                     Authorization: `Bearer ${userToken}`,
                 },
@@ -46,7 +46,7 @@ const GroupManagementPage = () => {
     // Obtener la lista de usuarios
     const fetchUsers = async () => {
         try {
-            const response = await axios.get('http://localhost:3000/users', {
+            const response = await axios.get('https://development-iyl1.onrender.com/users', {
                 headers: {
                     Authorization: `Bearer ${userToken}`,
                 },
@@ -61,7 +61,7 @@ const GroupManagementPage = () => {
     const onCreateTask = async (values) => {
         try {
             const response = await axios.post(
-                `http://localhost:3000/groups/${selectedGroupId}/tasks`,
+                `https://development-iyl1.onrender.com/groups/${selectedGroupId}/tasks`,
                 {
                     category: values.category,
                     description: values.description,
@@ -90,7 +90,7 @@ const GroupManagementPage = () => {
     const onEditTask = async (values) => {
         try {
             const response = await axios.put(
-                `http://localhost:3000/tasks/update/${editingTask.id}`,
+                `https://development-iyl1.onrender.com/tasks/update/${editingTask.id}`,
                 {
                     ...values,
                     time_until_finish: values.time_until_finish,
@@ -115,7 +115,7 @@ const GroupManagementPage = () => {
     // Eliminar una tarea
     const onDeleteTask = async (taskId) => {
         try {
-            await axios.delete(`http://localhost:3000/tasks/delete/${taskId}`, {
+            await axios.delete(`https://development-iyl1.onrender.com/tasks/delete/${taskId}`, {
                 headers: {
                     Authorization: `Bearer ${userToken}`,
                 },
@@ -135,7 +135,7 @@ const GroupManagementPage = () => {
     const onChangeStatus = async (taskId, newStatus) => {
         try {
             await axios.put(
-                `http://localhost:3000/tasks/${taskId}/update-status`,
+                `https://development-iyl1.onrender.com/tasks/${taskId}/update-status`,
                 { status: newStatus },
                 {
                     headers: {
@@ -155,7 +155,7 @@ const GroupManagementPage = () => {
     const onCreateGroup = async (values) => {
         try {
             const response = await axios.post(
-                'http://localhost:3000/groups',
+                'https://development-iyl1.onrender.com/groups',
                 {
                     name: values.groupName,
                     description: values.description,
@@ -180,7 +180,7 @@ const GroupManagementPage = () => {
     const handleAddMember = async (username) => {
         try {
             const response = await axios.post(
-                `http://localhost:3000/groups/${selectedGroupId}/add-member`,
+                `https://development-iyl1.onrender.com/groups/${selectedGroupId}/add-member`,
                 { usernameToAdd: username },
                 {
                     headers: {

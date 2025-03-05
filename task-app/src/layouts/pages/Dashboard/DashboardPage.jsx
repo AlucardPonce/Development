@@ -26,7 +26,7 @@ const DashboardPage = () => {
 
     const fetchMyTasks = async () => {
         try {
-            const response = await axios.get("http://localhost:3000/user/tasks", {
+            const response = await axios.get("https://development-iyl1.onrender.com/user/tasks", {
                 headers: { Authorization: `Bearer ${userToken}` },
             });
             setMyTasks(response.data.tasks);
@@ -38,7 +38,7 @@ const DashboardPage = () => {
 
     const fetchGroups = async () => {
         try {
-            const response = await axios.get("http://localhost:3000/user/groups", {
+            const response = await axios.get("https://development-iyl1.onrender.com/user/groups", {
                 headers: { Authorization: `Bearer ${userToken}` },
             });
             setGroups(response.data.groups);
@@ -50,13 +50,13 @@ const DashboardPage = () => {
 
     const fetchGroupTasks = async () => {
         try {
-            const response = await axios.get("http://localhost:3000/user/groups", {
+            const response = await axios.get("https://development-iyl1.onrender.com/user/groups", {
                 headers: { Authorization: `Bearer ${userToken}` },
             });
             const groups = response.data.groups;
 
             const allTasks = await Promise.all(groups.map(async (group) => {
-                const tasksResponse = await axios.get(`http://localhost:3000/groups/${group.id}/tasks`, {
+                const tasksResponse = await axios.get(`https://development-iyl1.onrender.com/groups/${group.id}/tasks`, {
                     headers: { Authorization: `Bearer ${userToken}` },
                 });
                 return tasksResponse.data.tasks;
@@ -71,7 +71,7 @@ const DashboardPage = () => {
 
     const fetchUsers = async () => {
         try {
-            const response = await axios.get("http://localhost:3000/users", {
+            const response = await axios.get("https://development-iyl1.onrender.com/users", {
                 headers: { Authorization: `Bearer ${userToken}` },
             });
             setUsers(response.data.users);
@@ -85,8 +85,8 @@ const DashboardPage = () => {
         try {
             const isEdit = Boolean(values.id);
             const endpoint = isEdit
-                ? `http://localhost:3000/tasks/update/${values.id}`
-                : "http://localhost:3000/tasks";
+                ? `https://development-iyl1.onrender.com/tasks/update/${values.id}`
+                : "https://development-iyl1.onrender.com/tasks";
             const method = isEdit ? "put" : "post";
 
             await axios({
@@ -110,7 +110,7 @@ const DashboardPage = () => {
     const onChangeStatus = async (taskId, newStatus) => {
         try {
             await axios.put(
-                `http://localhost:3000/tasks/${taskId}/update-status`,
+                `https://development-iyl1.onrender.com/tasks/${taskId}/update-status`,
                 { status: newStatus },
                 {
                     headers: { Authorization: `Bearer ${userToken}` },
