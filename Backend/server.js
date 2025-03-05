@@ -9,6 +9,9 @@ const bodyParser = require('body-parser');
 const app = express();
 const port = process.env.PORT || 3000;
 
+console.log("🔍 FIREBASE_SERVICE_ACCOUNT:", process.env.FIREBASE_SERVICE_ACCOUNT);
+
+
 // 🔹 Verifica que la variable de entorno está definida
 if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
     console.error("❌ ERROR: La variable de entorno FIREBASE_SERVICE_ACCOUNT no está configurada.");
