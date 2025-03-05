@@ -1,33 +1,51 @@
 require('dotenv').config();
 const express = require('express');
 const admin = require('firebase-admin');
-const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const cors = require("cors"); 
-const app = express();
-const port = 3000;
+const cors = require("cors");
 const bodyParser = require('body-parser');
 
-const serviceAccount = JSON.parse(fs.readFileSync('./credenciales/firebase-key.json', 'utf8'));
+const app = express();
+const port = process.env.PORT || 3000;
 
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-});
+// 🔹 Verifica que la variable de entorno está definida
+if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+    console.error("❌ ERROR: La variable de entorno FIREBASE_SERVICE_ACCOUNT no está configurada.");
+    process.exit(1); // Detiene la ejecución si no hay credenciales
+}
 
+// 🔹 Convertir las credenciales de Firebase de string JSON a objeto
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
-admin.firestore().collection('users').limit(1).get()
-    .then(() => {
-        console.log('Conexión a Firebase establecida correctamente');
-    })
-    .catch((err) => {
-        console.error('Error al conectar con Firebase:', err);
+// 🔹 Inicializar Firebase Admin
+try {
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
     });
+
+    console.log('✅ Firebase inicializado correctamente');
+} catch (error) {
+    console.error("❌ Error al inicializar Firebase:", error);
+    process.exit(1); // Detiene la ejecución si Firebase no se inicializa
+}
 
 const db = admin.firestore();
 
-app.use(cors()); 
+// 🔹 Verificar conexión con Firebase
+db.collection('users').limit(1).get()
+    .then(() => console.log('✅ Conexión a Firebase establecida correctamente'))
+    .catch((err) => console.error('❌ Error al conectar con Firebase:', err));
+
+// 🔹 Middlewares
+app.use(cors());
 app.use(express.json());
+app.use(bodyParser.json());
+
+// 🔹 Endpoint de prueba para verificar si el backend está corriendo en Render
+app.get('/status', (req, res) => {
+    res.json({ message: '✅ Backend corriendo en Render', url: "https://development-iyl1.onrender.com" });
+});
 
 const generateToken = (userId) => {
     return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '10m' });
@@ -781,6 +799,7 @@ app.get('/groups/:groupId/all-users/tasks-history', verifyToken, async (req, res
 });
 
 
+// 🔹 Servidor escuchando
 app.listen(port, () => {
-    console.log(`Servidor corriendo en http://localhost:${port}`);
+    console.log(`🚀 Servidor corriendo en: https://development-iyl1.onrender.com`);
 });
