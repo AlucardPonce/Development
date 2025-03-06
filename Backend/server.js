@@ -152,7 +152,6 @@ app.post('/validate', async (req, res) => {
         return res.status(500).json({ statusCode: 500, intMessage: 'Error interno del servidor', error: err.message });
     }
 });
-
 //$$$$$$$$$$$$$$$$$$$$$$$$$$$$$[      APIS TASK         ]$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 app.post('/tasks', verifyToken, async (req, res) => {
     try {
@@ -256,6 +255,136 @@ app.put('/tasks/update/:id', verifyToken, async (req, res) => {
     }
 });
         
+app.delete('/tasks/delete/:id', verifyToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const taskRef = db.collection('task').doc(id);
+        const taskDoc = await taskRef.get();
+
+        if (!taskDoc.exists) {
+            return res.status(404).json({ statusCode: 404, message: 'Tarea no encontrada' });
+        }
+
+        const task = taskDoc.data();
+
+        // Verificar si el usuario es el creador de la tarea o un admin
+        const userRef = db.collection('USERS').where('username', '==', req.username).get();
+        const user = (await userRef).docs[0].data();
+
+        if (task.username !== req.username && user.rol !== 'admin') {
+            return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para eliminar esta tarea' });
+        }
+
+        await taskRef.delete();
+        res.status(200).json({ statusCode: 200, message: 'Tarea eliminada con éxito' });
+
+    } catch (err) {
+        res.status(500).json({ statusCode: 500, message: 'Error al eliminar la tarea', error: err.message });
+    }
+});
+//$$$$$$$$$$$$$$$$$$$$$$$$$$$$$[      APIS TASK         ]$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+app.post('/tasks', verifyToken, async (req, res) => {
+    try {
+        const { category, description, name_task, status, time_until_finish, remind_me } = req.body;
+
+        if (!category || !description || !name_task || !status || !time_until_finish || !remind_me) {
+            return res.status(400).json({ statusCode: 400, message: 'Todos los campos son obligatorios' });
+        }
+
+        const timestamp = new Date().toISOString();
+        const taskRef = db.collection('task').doc();
+        const newTask = {
+            id: taskRef.id,
+            category,
+            description,
+            name_task,
+            status,
+            time_until_finish,
+            remind_me,
+            timestamp,
+            username: req.username
+        };
+
+        await taskRef.set(newTask);
+        res.status(201).json({ statusCode: 201, message: 'Tarea creada con éxito', taskId: taskRef.id });
+    } catch (err) {
+        res.status(500).json({ statusCode: 500, message: 'Error al crear la tarea', error: err.message });
+    }
+});
+
+app.get('/tasks', verifyToken, async (req, res) => {
+    try {
+        const username = req.username;
+
+        const tasksSnapshot = await db.collection('task').where('username', '==', username).get();
+        const tasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.status(200).json({ statusCode: 200, tasks });
+    } catch (err) {
+        res.status(500).json({ statusCode: 500, message: 'Error al obtener tareas', error: err.message });
+    }
+});
+
+app.get('/all-tasks', async (req, res) => {
+    try {
+        const tasksSnapshot = await db.collection('task').get();
+        const tasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.status(200).json({ statusCode: 200, tasks });
+    } catch (err) {
+        res.status(500).json({ statusCode: 500, message: 'Error al obtener todas las tareas', error: err.message });
+    }
+});
+
+app.put('/tasks/update/:id', verifyToken, async (req, res) => {
+    const { id } = req.params;
+    const { category, description, name_task, status, time_until_finish, remind_me, assignedTo } = req.body;
+    const username = req.username; // Extraer username del objeto req
+
+    console.log('Datos recibidos:', req.body); // Depuración: Verifica los datos recibidos
+    console.log('Usuario que realiza la solicitud:', username); // Depuración: Verifica el username
+
+    try {
+        const taskRef = db.collection('task').doc(id);
+        const taskDoc = await taskRef.get();
+
+        if (!taskDoc.exists) {
+            return res.status(404).json({ statusCode: 404, message: 'Tarea no encontrada' });
+        }
+
+        const task = taskDoc.data();
+
+        // Verificar permisos
+        const userRef = db.collection('USERS').where('username', '==', username).get();
+        const userSnapshot = await userRef;
+
+        if (userSnapshot.empty) {
+            return res.status(404).json({ statusCode: 404, message: 'Usuario no encontrado' });
+        }
+
+        const user = userSnapshot.docs[0].data();
+
+        if (task.created_by !== username && user.rol !== 'admin') {
+            return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para editar esta tarea' });
+        }
+
+        // Actualizar la tarea
+        await taskRef.update({
+            category,
+            description,
+            name_task,
+            status,
+            time_until_finish,
+            remind_me,
+            assignedTo, // Asegúrate de que este campo se actualice
+            timestamp: new Date().toISOString(),
+        });
+
+        res.status(200).json({ statusCode: 200, message: 'Tarea actualizada con éxito' });
+    } catch (err) {
+        console.error('Error al actualizar la tarea:', err); // Depuración: Verifica el error
+        res.status(500).json({ statusCode: 500, message: 'Error al actualizar la tarea', error: err.message });
+    }
+});
+
 app.delete('/tasks/delete/:id', verifyToken, async (req, res) => {
     try {
         const { id } = req.params;
@@ -467,6 +596,8 @@ app.put('/tasks/:taskId/update-status', verifyToken, async (req, res) => {
         if (!status) {
             return res.status(400).json({ statusCode: 400, message: 'El estado es obligatorio' });
         }
+        const userRef = db.collection('USERS').where('username', '==', username).get();
+        const user = (await userRef).docs[0].data();
 
         const taskRef = db.collection('task').doc(taskId);
         const taskDoc = await taskRef.get();
@@ -477,9 +608,10 @@ app.put('/tasks/:taskId/update-status', verifyToken, async (req, res) => {
 
         const task = taskDoc.data();
 
-        if (task.assignedTo !== username) {
+        if (task.assignedTo !== username && user.rol !== 'admin') {
             return res.status(403).json({ statusCode: 403, message: 'No tienes permiso para actualizar esta tarea' });
         }
+        
 
         await taskRef.update({ status });
 
@@ -800,7 +932,6 @@ app.get('/groups/:groupId/all-users/tasks-history', verifyToken, async (req, res
         res.status(500).json({ statusCode: 500, message: 'Error al obtener el historial de tareas de todos los usuarios en el grupo', error: err.message });
     }
 });
-
 
 // 🔹 Servidor escuchando
 app.listen(port, () => {
