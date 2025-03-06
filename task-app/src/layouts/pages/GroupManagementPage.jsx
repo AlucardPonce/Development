@@ -44,7 +44,6 @@ const GroupManagementPage = () => {
         }
     };
 
-    // Obtener la lista de usuarios
     const fetchUsers = async () => {
         try {
             const response = await axios.get('https://development-iyl1.onrender.com/users', {
