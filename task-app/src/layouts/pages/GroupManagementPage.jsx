@@ -29,7 +29,7 @@ const GroupManagementPage = () => {
             console.error('Error al obtener grupos:', error);
         }
     };
-
+//arreglado
     // Obtener la lista de tareas de un grupo
     const fetchTasks = async (groupId) => {
         try {
