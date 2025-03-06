@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 const TaskForm = ({ visible, onCreate, onCancel, taskData, groups, users }) => {
     const [form] = Form.useForm();
 
+    // Resetear el formulario cuando cambia `taskData` o `visible`
     useEffect(() => {
         if (taskData) {
             form.setFieldsValue({
@@ -17,6 +18,7 @@ const TaskForm = ({ visible, onCreate, onCancel, taskData, groups, users }) => {
         }
     }, [taskData, visible]);
 
+    // Enviar los datos del formulario
     const onFinish = (values) => {
         onCreate({
             ...values,
@@ -36,7 +38,84 @@ const TaskForm = ({ visible, onCreate, onCancel, taskData, groups, users }) => {
             onOk={form.submit}
         >
             <Form form={form} layout="vertical" onFinish={onFinish}>
-                {/* Campos del formulario */}
+                <Form.Item
+                    name="name_task"
+                    label="Nombre de la tarea"
+                    rules={[{ required: true, message: "Por favor ingresa el nombre de la tarea" }]}
+                >
+                    <Input />
+                </Form.Item>
+                <Form.Item
+                    name="description"
+                    label="Descripción"
+                    rules={[{ required: true, message: "Por favor ingresa la descripción" }]}
+                >
+                    <Input.TextArea />
+                </Form.Item>
+                <Form.Item
+                    name="time_until_finish"
+                    label="Tiempo hasta terminar"
+                    rules={[{ required: true, message: "Por favor selecciona la fecha y hora" }]}
+                >
+                    <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" />
+                </Form.Item>
+                <Form.Item
+                    name="remind_me"
+                    label="Recordarme"
+                    rules={[{ required: true, message: "Por favor selecciona la fecha y hora" }]}
+                >
+                    <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" />
+                </Form.Item>
+                <Form.Item
+                    label="Estado"
+                    name="status"
+                    rules={[{ required: true, message: "Por favor, seleccione un estado" }]}
+                >
+                    <Select placeholder="Seleccione un estado">
+                        <Select.Option value="pendiente">Pendiente</Select.Option>
+                        <Select.Option value="en progreso">En Progreso</Select.Option>
+                        <Select.Option value="completado">Completado</Select.Option>
+                    </Select>
+                </Form.Item>
+                <Form.Item
+                    name="category"
+                    label="Categoría"
+                    rules={[{ required: true, message: "Por favor ingresa la categoría" }]}
+                >
+                    <Input />
+                </Form.Item>
+
+                {/* Mostrar "Grupo" y "Asignar a" solo en edición */}
+                {taskData && (
+                    <>
+                        <Form.Item
+                            name="groupId"
+                            label="Grupo"
+                            rules={[{ required: true, message: "Por favor selecciona un grupo" }]}
+                        >
+                            <Select placeholder="Seleccione un grupo">
+                                {groups.map((group) => (
+                                    <Select.Option key={group.id} value={group.id}>
+                                        {group.name}
+                                    </Select.Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                        <Form.Item
+                            name="assignedTo"
+                            label="Asignar a"
+                            rules={[{ required: true, message: "Por favor selecciona un usuario" }]}
+                        >
+                            <Select placeholder="Seleccione un usuario">
+                                {users.map((user) => (
+                                    <Select.Option key={user.id} value={user.id}>
+                                        {user.username}
+                                    </Select.Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                    </>
+                )}
             </Form>
         </Modal>
     );
